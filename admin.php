@@ -239,10 +239,12 @@ if (isset($_GET['api'])) {
         $search = trim($_GET['search'] ?? '');
         $status = $_GET['status'] ?? '';
         $period = $_GET['period'] ?? '';
+        $order_type_filter = $_GET['order_type'] ?? '';
         $where = ['1=1'];
         $params = [];
         if ($search) { $where[] = "(o.order_number LIKE ? OR c.full_name LIKE ? OR c.mobile LIKE ?)"; $params = array_merge($params, ["%$search%","%$search%","%$search%"]); }
         if ($status) { $where[] = "o.status=?"; $params[] = $status; }
+        if ($order_type_filter) { $where[] = "o.order_type=?"; $params[] = $order_type_filter; }
         if ($period === 'today') { $where[] = "DATE(o.created_at)=CURDATE()"; }
         elseif ($period === 'week') { $where[] = "o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"; }
         elseif ($period === 'month') { $where[] = "o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"; }
@@ -782,6 +784,73 @@ if (isset($_GET['api'])) {
         exit;
     }
 
+    if ($action === 'reset_data') {
+        if (!hasRole('superadmin')) { echo json_encode(['success' => false, 'message' => 'Superadmin only']); exit; }
+        $scope = $data['scope'] ?? [];
+        if (!is_array($scope) || empty($scope)) { echo json_encode(['success' => false, 'message' => 'No scope selected']); exit; }
+
+        $cleared = [];
+        $db->exec("SET FOREIGN_KEY_CHECKS=0");
+
+        try {
+            if (in_array('orders', $scope)) {
+                $db->exec("DELETE FROM orders");
+                $db->exec("DELETE FROM coupon_usage");
+                $cleared[] = 'Orders & coupon usage';
+                adminLog('reset_data', 'Orders cleared');
+            }
+            if (in_array('points', $scope)) {
+                $db->exec("DELETE FROM point_transactions");
+                $db->exec("UPDATE customers SET points=0, membership_level='Bronze'");
+                $cleared[] = 'Customer points & transactions';
+                adminLog('reset_data', 'Points reset');
+            }
+            if (in_array('coupons', $scope)) {
+                $db->exec("DELETE FROM coupon_usage");
+                $db->exec("DELETE FROM coupons");
+                $cleared[] = 'Coupons';
+                adminLog('reset_data', 'Coupons cleared');
+            }
+            if (in_array('menu', $scope)) {
+                $db->exec("DELETE FROM menu_items");
+                $db->exec("DELETE FROM menu_categories");
+                $cleared[] = 'Menu items & categories';
+                adminLog('reset_data', 'Menu cleared');
+            }
+            if (in_array('combos', $scope)) {
+                $db->exec("DELETE FROM combo_offers");
+                $cleared[] = 'Combo offers';
+                adminLog('reset_data', 'Combos cleared');
+            }
+            if (in_array('rewards', $scope)) {
+                $db->exec("DELETE FROM rewards");
+                $cleared[] = 'Rewards';
+                adminLog('reset_data', 'Rewards cleared');
+            }
+            if (in_array('customers', $scope)) {
+                $db->exec("DELETE FROM point_transactions");
+                $db->exec("DELETE FROM coupon_usage");
+                $db->exec("DELETE FROM blocked_customers");
+                $db->exec("DELETE FROM customers");
+                $cleared[] = 'Customers (all data)';
+                adminLog('reset_data', 'All customers deleted');
+            }
+            if (in_array('logs', $scope)) {
+                $db->exec("DELETE FROM admin_logs");
+                $cleared[] = 'Admin logs';
+                adminLog('reset_data', 'Logs cleared');
+            }
+        } catch (Exception $e) {
+            $db->exec("SET FOREIGN_KEY_CHECKS=1");
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            exit;
+        }
+
+        $db->exec("SET FOREIGN_KEY_CHECKS=1");
+        echo json_encode(['success' => true, 'cleared' => $cleared]);
+        exit;
+    }
+
     if ($action === 'get_notifications') {
         $notifs = [];
         $pending = $db->query("SELECT COUNT(*) FROM orders WHERE status='pending'")->fetchColumn();
@@ -1181,23 +1250,97 @@ canvas { max-height: 200px; }
 .avatar-initials { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--p3), var(--p5)); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 13px; flex-shrink: 0; }
 .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
 
+/* ─── MOBILE BOTTOM NAV ─── */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 98;
+  background: var(--bg2); border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  padding: 0; height: 60px;
+  justify-content: space-around; align-items: stretch;
+}
+.mob-nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; cursor: pointer; padding: 6px 4px; font-size: 10px; font-weight: 600;
+  color: var(--text3); transition: color 0.15s; position: relative; border: none;
+  background: none; font-family: var(--font);
+}
+.mob-nav-item.active { color: var(--p3); }
+.mob-nav-item .mob-nav-icon { font-size: 18px; line-height: 1; }
+.mob-nav-badge {
+  position: absolute; top: 4px; right: calc(50% - 16px);
+  background: #ef4444; color: #fff; font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center;
+}
+
+/* ─── ORDER CARD (mobile) ─── */
+#orders-mobile-cards { display: none; }
+.order-card-mobile {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow);
+}
+.order-card-mobile .ocm-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.order-card-mobile .ocm-num { font-family: var(--mono); font-weight: 700; font-size: 13px; color: var(--p2); }
+.order-card-mobile .ocm-meta { font-size: 12px; color: var(--text3); display: flex; flex-direction: column; gap: 2px; }
+.order-card-mobile .ocm-items { font-size: 12px; color: var(--text2); margin: 6px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.order-card-mobile .ocm-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 6px; flex-wrap: wrap; }
+.order-card-mobile .ocm-total { font-weight: 700; font-size: 15px; color: var(--p2); }
+.order-card-mobile .ocm-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.order-card-mobile select.form-select { font-size: 12px; padding: 5px 8px; width: auto; }
+
+/* ─── TABLE NUMBER BADGE ─── */
+.table-num-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c;
+  font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+}
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 900px) {
   :root { --sidebar-w: 0px; }
-  .sidebar { transform: translateX(-248px); }
-  .sidebar.open { transform: translateX(0); }
+  .sidebar {
+    width: 260px; transform: translateX(-260px); z-index: 100;
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  }
+  .sidebar.open { transform: translateX(0); box-shadow: 6px 0 40px rgba(0,0,0,0.35); }
   .topbar-hamburger { display: flex; }
   .main-content { margin-left: 0; }
   .mobile-overlay.visible { display: block; }
-  .page-content { padding: 16px; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .page-content { padding: 14px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .topbar { padding: 0 14px; gap: 10px; height: 56px; }
+  .topbar-title { font-size: 15px; }
+  .topbar-title span { display: none; }
+  .notif-panel { width: 300px; right: -8px; }
+  .table-wrap table { min-width: 600px; }
+  .section-header { margin-bottom: 14px; }
+  .section-header h2 { font-size: 17px; }
+  .filter-bar { gap: 8px; }
+  .filter-bar .form-input, .filter-bar .form-select { font-size: 13px; }
+  .modal { max-width: 100%; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .modal-overlay { align-items: flex-end; }
+  /* Hide desktop orders table on mobile, show cards */
+  #orders-desktop-table { display: none; }
+  #orders-mobile-cards { display: block; }
+  .mobile-bottom-nav { display: flex; }
+  /* Extra bottom padding so content isn't hidden under bottom nav */
+  .page-content { padding-bottom: 72px; }
+  /* Hide sound toggle text on mobile */
+  #order-sound-toggle .btn-label { display: none; }
+  .card { padding: 14px; }
+  .stat-card { padding: 14px; }
+  .stat-card .stat-value { font-size: 22px; }
 }
 @media (max-width: 480px) {
-  .stats-grid { grid-template-columns: 1fr; }
-  .filter-bar { flex-direction: column; }
-  .modal { max-width: 100%; border-radius: var(--radius) var(--radius) 0 0; align-self: flex-end; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .filter-bar .search-wrap, .filter-bar .form-select, .filter-bar .form-input { width: 100% !important; min-width: 0; }
+  .search-input { min-width: 0 !important; }
+  .modal { max-width: 100%; border-radius: var(--radius-lg) var(--radius-lg) 0 0; max-height: 95vh; }
   .modal-overlay { align-items: flex-end; }
+  .topbar-actions > *:not(:last-child):not(:nth-last-child(2)) { display: none; }
+  .page-content { padding: 10px 10px 72px; }
 }
 </style>
 </head>
@@ -1233,7 +1376,7 @@ canvas { max-height: 200px; }
         🔐 Sign In to Admin Panel
       </button>
     </div>
-    <p style="text-align:center;margin-top:20px;font-size:12px;color:var(--text-muted);">Default: admin / admin123</p>
+ 
   </div>
 </div>
 
@@ -1340,9 +1483,30 @@ canvas { max-height: 200px; }
             <div id="notif-list"><div style="padding:20px;text-align:center;color:var(--text3)">Loading…</div></div>
           </div>
         </div>
+        <button class="btn btn-ghost btn-sm" id="order-sound-toggle" onclick="toggleOrderSound()" title="Toggle new order alert sound"><span id="sound-icon">🔔</span><span class="btn-label"> Sound ON</span></button>
         <button class="btn btn-ghost btn-sm" onclick="doAdminLogout()">🚪 Logout</button>
       </div>
     </header>
+
+    <!-- MOBILE BOTTOM NAV -->
+    <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+      <button class="mob-nav-item active" id="mbn-dashboard" onclick="showPage('dashboard');setMobActive('dashboard')">
+        <span class="mob-nav-icon">📊</span>Dashboard
+      </button>
+      <button class="mob-nav-item" id="mbn-orders" onclick="showPage('orders');setMobActive('orders')">
+        <span class="mob-nav-icon">🧾</span>Orders
+        <span class="mob-nav-badge" id="mob-nb-orders" style="display:none">0</span>
+      </button>
+      <button class="mob-nav-item" id="mbn-menu" onclick="showPage('menu');setMobActive('menu')">
+        <span class="mob-nav-icon">🍽️</span>Menu
+      </button>
+      <button class="mob-nav-item" id="mbn-customers" onclick="showPage('customers');setMobActive('customers')">
+        <span class="mob-nav-icon">👥</span>Customers
+      </button>
+      <button class="mob-nav-item" id="mbn-more" onclick="toggleSidebar()">
+        <span class="mob-nav-icon">☰</span>More
+      </button>
+    </nav>
 
     <main class="page-content">
 
@@ -1375,7 +1539,7 @@ canvas { max-height: 200px; }
           <div class="table-header"><h3>🧾 Recent Orders</h3><button class="btn btn-ghost btn-sm" onclick="showPage('orders')">View All</button></div>
           <div class="table-wrap">
             <table id="recent-orders-table">
-              <thead><tr><th>Order#</th><th>Customer</th><th>Total</th><th>Status</th><th>Time</th><th>Action</th></tr></thead>
+              <thead><tr><th>Order#</th><th>Customer</th><th>Total</th><th>Table</th><th>Status</th><th>Time</th><th>Action</th></tr></thead>
               <tbody id="recent-orders-body"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
             </table>
           </div>
@@ -1407,14 +1571,21 @@ canvas { max-height: 200px; }
                 <option value="week">This Week</option>
                 <option value="month">This Month</option>
               </select>
+              <select class="form-select" id="order-type-filter" onchange="loadOrders(1)" style="width:145px">
+                <option value="">All Types</option>
+                <option value="dine-in">🪑 Dine In</option>
+                <option value="pickup">🥡 Pickup</option>
+                <option value="home-delivery">🏠 Home Delivery</option>
+              </select>
             </div>
           </div>
-          <div class="table-wrap">
+          <div class="table-wrap" id="orders-desktop-table">
             <table>
-              <thead><tr><th>Order#</th><th>Customer</th><th>Mobile</th><th>Items</th><th>Total</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Order#</th><th>Customer</th><th>Mobile</th><th>Items</th><th>Type / Info</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
               <tbody id="orders-body"><tr class="empty-row"><td colspan="9">Loading…</td></tr></tbody>
             </table>
           </div>
+          <div id="orders-mobile-cards" style="padding:10px"></div>
           <div class="pagination" id="orders-pagination"></div>
         </div>
       </div>
@@ -1744,10 +1915,10 @@ canvas { max-height: 200px; }
             <button class="btn btn-primary btn-full" onclick="showQRCode()">Generate QR Code</button>
           </div>
           <div class="card" style="text-align:center">
-            <div style="font-size:36px;margin-bottom:8px">🔄</div>
-            <h3 style="font-size:15px;margin-bottom:6px">Reset Demo Data</h3>
-            <p style="color:var(--text3);font-size:12px;margin-bottom:16px">Clear all orders and reset customer points</p>
-            <button class="btn btn-danger btn-full" onclick="confirmResetDemo()">Reset Demo Data</button>
+            <div style="font-size:36px;margin-bottom:8px">🗑️</div>
+            <h3 style="font-size:15px;margin-bottom:6px">Reset Data</h3>
+            <p style="color:var(--text3);font-size:12px;margin-bottom:16px">Selectively clear menu, coupons, orders, points &amp; more</p>
+            <button class="btn btn-danger btn-full" onclick="openResetDataModal()">Reset Data…</button>
           </div>
         </div>
         <div class="card mt-4">
@@ -1945,6 +2116,20 @@ function showPage(page) {
   }
 }
 
+function setMobActive(page) {
+  document.querySelectorAll('.mob-nav-item').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('mbn-' + page);
+  if (btn) btn.classList.add('active');
+}
+
+// Update mobile badge for orders
+function updateMobOrderBadge(count) {
+  const el = document.getElementById('mob-nb-orders');
+  if (!el) return;
+  if (count > 0) { el.textContent = count; el.style.display = 'inline-block'; }
+  else el.style.display = 'none';
+}
+
 // ─── AUTH ───
 async function doAdminLogin() {
   const u = document.getElementById('l-user').value.trim();
@@ -1971,6 +2156,346 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('login-btn')) doAdminLogin();
 });
 
+// ─── ORDER ARRIVAL SOUND SYSTEM (Background-capable) ───
+// Strategy:
+//   1. Web Notifications fire even when tab is backgrounded/hidden → always visible
+//   2. Service Worker polls the API every 20s independently of the page tab state
+//   3. When the page IS visible, AudioContext plays the beep directly
+//   4. When the page is hidden (background tab), the SW sends a push-style
+//      message; on visibility restore the queued sound fires immediately
+//   5. <audio> element fallback for browsers that block AudioContext in BG
+
+let _orderSoundCtx = null;
+let _lastKnownPendingCount = -1;
+let _orderSoundEnabled = true;
+let _pendingSoundQueue = 0;   // sounds queued while page was hidden
+let _swRegistration = null;
+
+// ── Base-64 encoded short WAV beep (generated inline — no external file needed) ──
+// 3 beeps at 880Hz, 16-bit PCM, 22050Hz mono, ~1.3s
+function _buildBeepWav() {
+  const sampleRate = 22050;
+  const duration = 1.4; // seconds
+  const numSamples = Math.floor(sampleRate * duration);
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+  // RIFF header
+  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + numSamples * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);         // PCM
+  view.setUint16(22, 1, true);         // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, numSamples * 2, true);
+  // PCM samples: 3 beeps at offsets 0, 0.3, 0.6s, then rising chime at 0.9s
+  const beeps = [[0, 880], [0.28, 1100], [0.56, 880]];
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    let s = 0;
+    beeps.forEach(([start, freq]) => {
+      const end = start + 0.18;
+      if (t >= start && t < end) {
+        const env = Math.sin(Math.PI * (t - start) / 0.18); // envelope
+        s += 0.45 * env * Math.sin(2 * Math.PI * freq * t);
+        s += 0.2  * env * Math.sin(2 * Math.PI * freq * 2 * t);
+      }
+    });
+    // Rising chime 0.9–1.3s
+    if (t >= 0.9 && t < 1.35) {
+      const p = (t - 0.9) / 0.45;
+      const freq = 660 + p * 660;
+      const env = p < 0.1 ? p / 0.1 : (1 - (p - 0.1) / 0.9);
+      s += 0.55 * env * Math.sin(2 * Math.PI * freq * t);
+    }
+    view.setInt16(44 + i * 2, Math.max(-32768, Math.min(32767, s * 32767)), true);
+  }
+  // Convert to base64
+  let bin = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return 'data:audio/wav;base64,' + btoa(bin);
+}
+
+let _beepWavUrl = null;
+function getBeepWavUrl() {
+  if (!_beepWavUrl) _beepWavUrl = _buildBeepWav();
+  return _beepWavUrl;
+}
+
+function getAudioCtx() {
+  if (!_orderSoundCtx) {
+    _orderSoundCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_orderSoundCtx.state === 'suspended') _orderSoundCtx.resume();
+  return _orderSoundCtx;
+}
+
+// Play via AudioContext (foreground) OR <audio> element (more reliable in some browsers)
+function playOrderAlertSound() {
+  if (!_orderSoundEnabled) return;
+
+  // Always try <audio> element first — it works in background on most browsers
+  try {
+    const audio = new Audio(getBeepWavUrl());
+    audio.volume = 1.0;
+    const playPromise = audio.play();
+    if (playPromise) {
+      playPromise.catch(() => {
+        // Autoplay blocked — fall back to AudioContext
+        _playViaAudioContext();
+      });
+    }
+  } catch(e) {
+    _playViaAudioContext();
+  }
+
+  // Vibrate on mobile
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+}
+
+function _playViaAudioContext() {
+  try {
+    const ctx = getAudioCtx();
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 1.0;
+    masterGain.connect(ctx.destination);
+    const beepPattern = [0, 0.28, 0.56];
+    beepPattern.forEach(startOffset => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(masterGain);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(880, ctx.currentTime + startOffset);
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + startOffset + 0.05);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + startOffset + 0.10);
+      gain.gain.setValueAtTime(0, ctx.currentTime + startOffset);
+      gain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + startOffset + 0.01);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + startOffset + 0.18);
+      osc.start(ctx.currentTime + startOffset);
+      osc.stop(ctx.currentTime + startOffset + 0.19);
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2); gain2.connect(masterGain);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1760, ctx.currentTime + startOffset);
+      gain2.gain.setValueAtTime(0, ctx.currentTime + startOffset);
+      gain2.gain.linearRampToValueAtTime(0.25, ctx.currentTime + startOffset + 0.01);
+      gain2.gain.linearRampToValueAtTime(0, ctx.currentTime + startOffset + 0.18);
+      osc2.start(ctx.currentTime + startOffset);
+      osc2.stop(ctx.currentTime + startOffset + 0.19);
+    });
+    const chime = ctx.createOscillator();
+    const chimeGain = ctx.createGain();
+    chime.connect(chimeGain); chimeGain.connect(masterGain);
+    chime.type = 'sine';
+    chime.frequency.setValueAtTime(660, ctx.currentTime + 0.9);
+    chime.frequency.linearRampToValueAtTime(1320, ctx.currentTime + 1.3);
+    chimeGain.gain.setValueAtTime(0, ctx.currentTime + 0.9);
+    chimeGain.gain.linearRampToValueAtTime(0.65, ctx.currentTime + 0.92);
+    chimeGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.35);
+    chime.start(ctx.currentTime + 0.9);
+    chime.stop(ctx.currentTime + 1.36);
+  } catch(e) { console.warn('[OrderSound] AudioContext failed:', e); }
+}
+
+// ── Web Notification for background alerts ──
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const perm = await Notification.requestPermission();
+  return perm === 'granted';
+}
+
+function showOrderNotification(count) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const n = new Notification('🔔 New Order' + (count > 1 ? 's' : '') + ' — C3 Restro', {
+    body: `${count} new order${count > 1 ? 's' : ''} waiting! Tap to open admin panel.`,
+    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%2316a34a"/><text y="46" x="10" font-size="40">☕</text></svg>',
+    badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%2316a34a"/><text y="46" x="10" font-size="40">☕</text></svg>',
+    tag: 'c3-new-order',       // replaces previous notification instead of stacking
+    renotify: true,             // re-alert even if same tag
+    requireInteraction: true,   // stays until dismissed
+    silent: false,
+    vibrate: [200, 100, 200],
+  });
+  n.onclick = () => { window.focus(); n.close(); };
+}
+
+// ── Service Worker for background polling ──
+const _SW_SCRIPT = `
+const POLL_INTERVAL = 20000; // 20s
+const API_URL = '${location.href.split('?')[0]}?api=get_notifications';
+let _lastCount = -1;
+let _pollTimer = null;
+
+function startPolling() {
+  if (_pollTimer) return;
+  _pollTimer = setInterval(doPoll, POLL_INTERVAL);
+  doPoll();
+}
+
+async function doPoll() {
+  try {
+    const res = await fetch(API_URL, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const pending = data.notifications?.find(n => n.msg?.includes('pending'));
+    const count = pending ? (parseInt(pending.msg.split(' ')[0]) || 0) : 0;
+    if (_lastCount === -1) { _lastCount = count; return; }
+    if (count > _lastCount) {
+      const newCount = count - _lastCount;
+      // Notify the page client (plays sound if tab is visible)
+      self.clients.matchAll({ includeUncontrolled: true }).then(clients => {
+        clients.forEach(c => c.postMessage({ type: 'NEW_ORDER', count: newCount }));
+      });
+      // Show OS notification (works even if tab is background or phone is locked)
+      self.registration.showNotification('🔔 New Order' + (newCount > 1 ? 's' : '') + ' — C3 Restro', {
+        body: newCount + ' new order' + (newCount > 1 ? 's' : '') + ' waiting! Tap to open.',
+        icon: 'data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 64 64\\'><rect width=\\'64\\' height=\\'64\\' rx=\\'14\\' fill=\\'%2316a34a\\'/><text y=\\'46\\' x=\\'10\\' font-size=\\'40\\'>☕</text></svg>',
+        tag: 'c3-new-order',
+        renotify: true,
+        requireInteraction: true,
+        vibrate: [200, 100, 200, 100, 400],
+        data: { url: self.registration.scope }
+      });
+    }
+    _lastCount = count;
+  } catch(e) {}
+}
+
+self.addEventListener('install', () => { self.skipWaiting(); startPolling(); });
+self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); startPolling(); });
+self.addEventListener('message', msg => {
+  if (msg.data?.type === 'SET_BASELINE') { _lastCount = msg.data.count; }
+  if (msg.data?.type === 'START_POLLING') startPolling();
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window' }).then(clients => {
+    const c = clients.find(c => c.url.includes(self.registration.scope));
+    if (c) { c.focus(); } else { self.clients.openWindow(e.notification.data?.url || self.registration.scope); }
+  }));
+});
+`;
+
+async function registerOrderServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    console.warn('[SW] Service Workers not supported — background polling unavailable');
+    return;
+  }
+  try {
+    // Inline SW via Blob URL (no separate file needed)
+    const blob = new Blob([_SW_SCRIPT], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+
+    // NOTE: Blob-URL SWs are origin-scoped. We register with a path scope.
+    // Some browsers restrict Blob SW to scope of about:blank — fallback to data: URI trick.
+    let reg;
+    try {
+      reg = await navigator.serviceWorker.register(swUrl, { scope: './' });
+    } catch(e) {
+      // Fallback: try registering as a same-path SW if blob is blocked
+      console.warn('[SW] Blob SW failed, trying inline script approach:', e.message);
+      return;
+    }
+    _swRegistration = reg;
+    console.log('[SW] Registered:', reg.scope);
+
+    // Listen for messages from SW
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'NEW_ORDER') {
+        const count = e.data.count || 1;
+        if (document.hidden) {
+          _pendingSoundQueue += count;
+        } else {
+          playOrderAlertSound();
+          showNewOrderFlash(count);
+        }
+        showOrderNotification(count);
+        // Sync the page-side counter
+        _lastKnownPendingCount += count;
+      }
+    });
+
+    // Relay baseline to SW once notifications loaded
+    navigator.serviceWorker.ready.then(sw => {
+      if (_lastKnownPendingCount >= 0) {
+        sw.active?.postMessage({ type: 'SET_BASELINE', count: _lastKnownPendingCount });
+      }
+      sw.active?.postMessage({ type: 'START_POLLING' });
+    });
+  } catch(e) {
+    console.warn('[SW] Registration failed:', e);
+  }
+}
+
+// ── Play queued sounds when user returns to tab ──
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && _pendingSoundQueue > 0) {
+    playOrderAlertSound();
+    showNewOrderFlash(_pendingSoundQueue);
+    _pendingSoundQueue = 0;
+  }
+  // Resume audio context if it was suspended
+  if (!document.hidden && _orderSoundCtx?.state === 'suspended') {
+    _orderSoundCtx.resume();
+  }
+});
+
+function showNewOrderFlash(count) {
+  let flash = document.getElementById('new-order-flash');
+  if (!flash) {
+    flash = document.createElement('div');
+    flash.id = 'new-order-flash';
+    flash.style.cssText = `
+      position:fixed;top:70px;right:20px;z-index:99999;
+      background:linear-gradient(135deg,#16a34a,#059669);
+      color:#fff;font-weight:800;font-size:16px;
+      padding:14px 22px;border-radius:14px;
+      box-shadow:0 6px 32px rgba(22,163,74,0.55);
+      display:flex;align-items:center;gap:10px;
+      transform:translateX(120%);transition:transform 0.35s cubic-bezier(.34,1.56,.64,1);
+      cursor:pointer;user-select:none;
+    `;
+    flash.onclick = () => { flash.style.transform = 'translateX(120%)'; showPage('orders'); };
+    document.body.appendChild(flash);
+  }
+  flash.innerHTML = `<span style="font-size:24px;animation:ring 0.5s ease infinite alternate">🔔</span>
+    <span>${count} NEW ORDER${count>1?'S':''}!<br><span style="font-size:12px;font-weight:400;opacity:0.9">Click to view orders</span></span>`;
+  // Inject ring animation if not present
+  if (!document.getElementById('ring-keyframes')) {
+    const st = document.createElement('style');
+    st.id = 'ring-keyframes';
+    st.textContent = `@keyframes ring{from{transform:rotate(-15deg)}to{transform:rotate(15deg)}}`;
+    document.head.appendChild(st);
+  }
+  flash.style.transform = 'translateX(0)';
+  clearTimeout(flash._hideTimer);
+  flash._hideTimer = setTimeout(() => { flash.style.transform = 'translateX(120%)'; }, 8000);
+}
+
+function toggleOrderSound() {
+  _orderSoundEnabled = !_orderSoundEnabled;
+  const icon = document.getElementById('sound-icon');
+  const label = document.querySelector('#order-sound-toggle .btn-label');
+  if (icon) icon.textContent = _orderSoundEnabled ? '🔔' : '🔕';
+  if (label) label.textContent = _orderSoundEnabled ? ' Sound ON' : ' Sound OFF';
+  toast(_orderSoundEnabled ? 'Order alert sound ON 🔔' : 'Order alert sound OFF 🔕', _orderSoundEnabled ? 'success' : 'warning');
+  if (_orderSoundEnabled) {
+    try { getAudioCtx(); } catch(e) {}
+    // Re-request notification permission if needed
+    requestNotificationPermission();
+  }
+}
+
 // ─── NOTIFICATIONS ───
 async function loadNotifications() {
   try {
@@ -1982,7 +2507,36 @@ async function loadNotifications() {
       if (nb) { nb.textContent = res.count; nb.style.display = 'inline-block'; }
       if (dot) dot.style.display = 'block';
       const pending = res.notifications?.find(n => n.msg?.includes('pending'));
-      if (pending) { const nb2 = document.getElementById('nb-orders'); if(nb2) { nb2.textContent = pending.msg.split(' ')[0]; nb2.style.display = 'inline-block'; } }
+      if (pending) {
+        const nb2 = document.getElementById('nb-orders');
+        if (nb2) { nb2.textContent = pending.msg.split(' ')[0]; nb2.style.display = 'inline-block'; }
+        updateMobOrderBadge(parseInt(pending.msg.split(' ')[0]) || 0);
+
+        // ── New order sound alert ──
+        const currentPending = parseInt(pending.msg.split(' ')[0]) || 0;
+        if (_lastKnownPendingCount === -1) {
+          // First load — set baseline silently, relay to SW
+          _lastKnownPendingCount = currentPending;
+          navigator.serviceWorker?.ready.then(sw => {
+            sw.active?.postMessage({ type: 'SET_BASELINE', count: currentPending });
+          }).catch(() => {});
+        } else if (currentPending > _lastKnownPendingCount) {
+          const newCount = currentPending - _lastKnownPendingCount;
+          playOrderAlertSound();
+          showNewOrderFlash(newCount);
+          showOrderNotification(newCount);
+          _lastKnownPendingCount = currentPending;
+        } else {
+          _lastKnownPendingCount = currentPending;
+        }
+      } else {
+        // No pending orders notification — reset counter
+        if (_lastKnownPendingCount === -1) _lastKnownPendingCount = 0;
+        else _lastKnownPendingCount = 0;
+      }
+    } else {
+      if (_lastKnownPendingCount === -1) _lastKnownPendingCount = 0;
+      else _lastKnownPendingCount = 0;
     }
     if (list) {
       list.innerHTML = res.notifications?.length ? res.notifications.map(n =>
@@ -2048,15 +2602,22 @@ async function loadDashboard() {
 
   // Recent orders
   const orders = res.recent_orders || [];
-  document.getElementById('recent-orders-body').innerHTML = orders.length ? orders.map(o => `
-    <tr>
+  document.getElementById('recent-orders-body').innerHTML = orders.length ? orders.map(o => {
+    const tableNum = extractTableNumber(o.notes);
+    const deliveryAddr = extractDeliveryAddress(o.notes);
+    const typeInfo = o.order_type === 'home-delivery'
+      ? `${orderTypeBadge(o.order_type)}`
+      : (tableNum ? `<span class="table-num-badge">🪑 ${esc(tableNum)}</span>` : orderTypeBadge(o.order_type || 'dine-in'));
+    return `<tr>
       <td><span style="font-family:var(--mono);font-size:12px;font-weight:600">${esc(o.order_number)}</span></td>
       <td>${esc(o.full_name || 'Unknown')}</td>
       <td><strong>₹${Number(o.total).toLocaleString('en-IN')}</strong></td>
+      <td>${typeInfo}</td>
       <td><span class="status-pill status-${o.status}">${o.status}</span></td>
       <td style="font-size:12px;color:var(--text3)">${timeAgo(o.created_at)}</td>
       <td><button class="btn btn-xs btn-secondary" onclick="openOrderDetail(${o.id})">View</button></td>
-    </tr>`).join('') : '<tr class="empty-row"><td colspan="6">No orders yet</td></tr>';
+    </tr>`;
+  }).join('') : '<tr class="empty-row"><td colspan="7">No orders yet</td></tr>';
 }
 
 function drawSalesChart(monthly) {
@@ -2095,29 +2656,86 @@ function drawSalesChart(monthly) {
 }
 
 // ─── ORDERS ───
+function extractTableNumber(notes) {
+  if (!notes) return null;
+  // notes format: "Table 5" or "Table 5 | some note"
+  const m = notes.match(/^Table\s+(\S+)/i);
+  return m ? m[1] : null;
+}
+
+function extractDeliveryAddress(notes) {
+  if (!notes) return null;
+  // notes format: "Delivery to: <address>" or "Delivery to: <address> | some note"
+  const m = notes.match(/^Delivery to:\s*(.+?)(?:\s*\|\s*|$)/i);
+  return m ? m[1].trim() : null;
+}
+
+function extractOrderNotes(notes) {
+  if (!notes) return '';
+  // Strip "Table X | " prefix
+  let cleaned = notes.replace(/^Table\s+\S+\s*[|]?\s*/i, '');
+  // Strip "Delivery to: address | " prefix
+  cleaned = cleaned.replace(/^Delivery to:\s*.+?(?:\s*\|\s*)/i, '');
+  // Strip "Pickup | " prefix
+  cleaned = cleaned.replace(/^Pickup\s*[|]?\s*/i, '');
+  return cleaned.trim();
+}
+
+function orderTypeBadge(orderType) {
+  const map = {
+    'dine-in':       { icon: '🪑', label: 'Dine In',  color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+    'pickup':        { icon: '🥡', label: 'Pickup',   color: '#0284c7', bg: 'rgba(2,132,199,0.1)'  },
+    'home-delivery': { icon: '🏠', label: 'Delivery', color: '#16a34a', bg: 'rgba(22,163,74,0.1)'  },
+  };
+  const t = map[orderType] || { icon: '📋', label: orderType || '—', color: '#6b7280', bg: 'rgba(107,114,128,0.1)' };
+  return `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:700;color:${t.color};background:${t.bg};border:1px solid ${t.color}22;">${t.icon} ${t.label}</span>`;
+}
+
+function isMobile() {
+  return window.innerWidth <= 900;
+}
+
 async function loadOrders(page = 1) {
   console.log('[loadOrders] page:', page);
   const tbody = document.getElementById('orders-body');
+  const mobileCards = document.getElementById('orders-mobile-cards');
   const search = document.getElementById('order-search')?.value || '';
   const status = document.getElementById('order-status-filter')?.value || '';
   const period = document.getElementById('order-period-filter')?.value || '';
+  const order_type = document.getElementById('order-type-filter')?.value || '';
   try {
-    const res = await api('get_orders', null, 'GET', { page, search, status, period });
+    const res = await api('get_orders', null, 'GET', { page, search, status, period, order_type });
     if (!res || res.error) throw new Error(res?.error || 'API error');
-    if (!res.orders?.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No orders found</td></tr>'; document.getElementById('orders-pagination').innerHTML = ''; return; }
+
+    const statusSelect = (id, current) => ['pending','confirmed','preparing','ready','completed','cancelled']
+      .map(s => `<option value="${s}" ${current===s?'selected':''}>${s}</option>`).join('');
+
+    if (!res.orders?.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No orders found</td></tr>';
+      if (mobileCards) mobileCards.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">No orders found</div>';
+      document.getElementById('orders-pagination').innerHTML = '';
+      return;
+    }
+
+    // ── Desktop table rows ──
     tbody.innerHTML = res.orders.map(o => {
       const items = JSON.parse(o.items_json || '[]');
       const names = items.slice(0,2).map(i => i.name).join(', ') + (items.length > 2 ? ` +${items.length-2}` : '');
+      const tableNum = extractTableNumber(o.notes);
+      const deliveryAddr = extractDeliveryAddress(o.notes);
+      const typeInfo = o.order_type === 'home-delivery'
+        ? `${orderTypeBadge(o.order_type)}${deliveryAddr ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(deliveryAddr)}">📍 ${esc(deliveryAddr)}</div>` : ''}`
+        : `${orderTypeBadge(o.order_type)}${tableNum ? `<div style="font-size:11px;margin-top:2px;font-weight:700;color:#c2410c">🪑 ${esc(tableNum)}</div>` : ''}`;
       return `<tr>
         <td><span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--p2)">${esc(o.order_number)}</span></td>
         <td>${esc(o.full_name||'N/A')}</td>
         <td style="font-size:12px;color:var(--text3)">${esc(o.mobile||'')}</td>
-        <td style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(names)}">${esc(names)}</td>
+        <td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(names)}">${esc(names)}</td>
+        <td>${typeInfo}</td>
         <td><strong>₹${Number(o.total).toLocaleString('en-IN')}</strong></td>
-        <td><span class="badge badge-gray">${o.order_type}</span></td>
         <td>
           <select class="form-select" style="font-size:12px;padding:4px 8px;width:110px" onchange="updateOrderStatus(${o.id}, this.value)">
-            ${['pending','confirmed','preparing','ready','completed','cancelled'].map(s => `<option value="${s}" ${o.status===s?'selected':''}>${s}</option>`).join('')}
+            ${statusSelect(o.id, o.status)}
           </select>
         </td>
         <td style="font-size:12px;color:var(--text3)">${formatDate(o.created_at)}</td>
@@ -2129,10 +2747,55 @@ async function loadOrders(page = 1) {
         </td>
       </tr>`;
     }).join('');
+
+    // ── Mobile cards ──
+    if (mobileCards) {
+      mobileCards.innerHTML = res.orders.map(o => {
+        const items = JSON.parse(o.items_json || '[]');
+        const names = items.slice(0,2).map(i => i.name).join(', ') + (items.length > 2 ? ` +${items.length-2}` : '');
+        const tableNum = extractTableNumber(o.notes);
+        const deliveryAddr = extractDeliveryAddress(o.notes);
+        const pureNotes = extractOrderNotes(o.notes);
+        const statusDot = { pending:'#f59e0b', confirmed:'#2563eb', preparing:'#16a34a', ready:'#059669', completed:'#10b981', cancelled:'#ef4444' }[o.status] || '#6b7280';
+        return `<div class="order-card-mobile">
+          <div class="ocm-top">
+            <span class="ocm-num">#${esc(o.order_number)}</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              ${orderTypeBadge(o.order_type)}
+              <span class="status-pill status-${o.status}">${o.status}</span>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div>
+              <div style="font-size:13px;font-weight:600">${esc(o.full_name||'N/A')}</div>
+              <div class="ocm-items" title="${esc(names)}">${esc(names)}</div>
+              ${o.order_type === 'home-delivery' && deliveryAddr ? `<div style="font-size:11px;color:#16a34a;margin-top:3px;font-weight:600">📍 ${esc(deliveryAddr)}</div>` : ''}
+              ${o.order_type === 'dine-in' && tableNum ? `<div style="font-size:11px;color:#c2410c;margin-top:2px;font-weight:700">🪑 Table ${esc(tableNum)}</div>` : ''}
+              ${pureNotes ? `<div style="font-size:11px;color:var(--warning);margin-top:2px">📝 ${esc(pureNotes)}</div>` : ''}
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div class="ocm-total">₹${Number(o.total).toLocaleString('en-IN')}</div>
+              <div style="font-size:11px;color:var(--text3)">${timeAgo(o.created_at)}</div>
+            </div>
+          </div>
+          <div class="ocm-footer">
+            <select class="form-select" style="font-size:12px;padding:5px 8px;flex:1;min-width:0" onchange="updateOrderStatus(${o.id}, this.value)">
+              ${statusSelect(o.id, o.status)}
+            </select>
+            <div class="ocm-actions">
+              <button class="btn btn-xs btn-secondary" onclick="openOrderDetail(${o.id})">👁 Details</button>
+              <a href="https://wa.me/${o.mobile?.replace(/\D/g,'')}?text=Your+order+${esc(o.order_number)}+is+ready!" target="_blank" class="btn btn-xs btn-success">💬</a>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
     renderPagination('orders-pagination', res.page, res.pages, p => loadOrders(p));
   } catch(e) {
     console.error('[loadOrders] Error:', e);
     tbody.innerHTML = '<tr class="empty-row"><td colspan="9">⚠️ Failed to load orders. Check console.</td></tr>';
+    if (mobileCards) mobileCards.innerHTML = '<div style="padding:20px;text-align:center;color:var(--danger)">⚠️ Failed to load orders</div>';
     toast('Failed to load orders', 'error');
   }
 }
@@ -2161,14 +2824,23 @@ async function openOrderDetail(id) {
   const order = res.orders?.find(o => o.id == id);
   if (!order) { toast('Order not found', 'error'); return; }
   const items = JSON.parse(order.items_json || '[]');
+  const tableNum = extractTableNumber(order.notes);
+  const deliveryAddr = extractDeliveryAddress(order.notes);
+  const pureNotes = extractOrderNotes(order.notes);
+
+  const typeInfoCell = order.order_type === 'home-delivery'
+    ? `<div style="grid-column:1/-1"><div class="text-muted">🏠 Delivery Address</div><strong style="font-size:13px;color:#16a34a;line-height:1.5;display:block;margin-top:4px">${deliveryAddr ? esc(deliveryAddr) : '<span style="color:var(--text-muted);font-size:12px">Not provided</span>'}</strong></div>`
+    : `<div><div class="text-muted">🪑 Table Number</div><strong style="font-size:18px;color:#c2410c">${tableNum ? tableNum : '<span style="color:var(--text-muted);font-size:13px">Not specified</span>'}</strong></div>`;
+
   const html = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
       <div><div class="text-muted">Order Number</div><div style="font-family:var(--mono);font-weight:700;font-size:15px;color:var(--p2)">${esc(order.order_number)}</div></div>
       <div><div class="text-muted">Status</div><span class="status-pill status-${order.status}">${order.status}</span></div>
       <div><div class="text-muted">Customer</div><strong>${esc(order.full_name||'Unknown')}</strong></div>
       <div><div class="text-muted">Mobile</div>${esc(order.mobile||'N/A')}</div>
-      <div><div class="text-muted">Type</div><span class="badge badge-purple">${order.order_type}</span></div>
+      <div><div class="text-muted">Order Type</div>${orderTypeBadge(order.order_type)}</div>
       <div><div class="text-muted">Date</div>${formatDate(order.created_at)}</div>
+      ${typeInfoCell}
     </div>
     <hr class="divider">
     <div style="margin-bottom:12px"><strong>Order Items</strong></div>
@@ -2182,8 +2854,8 @@ async function openOrderDetail(id) {
       ${order.coupon_code?`<div style="font-size:12px;color:var(--text3)">Coupon: ${esc(order.coupon_code)}</div>`:''}
       <div style="font-size:18px;font-weight:800;margin-top:6px">Total: ₹${Number(order.total).toLocaleString('en-IN')}</div>
     </div>
-    ${order.notes?`<div style="margin-top:12px;background:var(--warning-bg);padding:10px;border-radius:8px;font-size:13px">📝 ${esc(order.notes)}</div>`:''}
-    <div style="margin-top:16px;display:flex;gap:8px">
+    ${pureNotes?`<div style="margin-top:12px;background:var(--warning-bg);padding:10px;border-radius:8px;font-size:13px">📝 ${esc(pureNotes)}</div>`:''}
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-primary btn-sm" onclick="printBill(${JSON.stringify(order).replace(/'/g,'')})">🖨️ Print Bill</button>
       <a href="https://wa.me/${order.mobile?.replace(/\D/g,'')}?text=Hi+${encodeURIComponent(order.full_name||'')}!+Your+order+${encodeURIComponent(order.order_number)}+update." target="_blank" class="btn btn-success btn-sm">💬 WhatsApp</a>
     </div>`;
@@ -2192,8 +2864,15 @@ async function openOrderDetail(id) {
 
 function printBill(order) {
   const items = JSON.parse(order.items_json || '[]');
+  const tableNum = extractTableNumber(order.notes);
+  const deliveryAddr = extractDeliveryAddress(order.notes);
+  const pureNotes = extractOrderNotes(order.notes);
+  const orderTypeLabel = { 'dine-in': '🪑 Dine In', 'pickup': '🥡 Pickup', 'home-delivery': '🏠 Home Delivery' }[order.order_type] || order.order_type;
+  const infoRow = order.order_type === 'home-delivery'
+    ? (deliveryAddr ? `<div class="table-row" style="background:#f0fdf4;border-color:#86efac;font-size:12px;text-align:left;">🏠 Deliver to: ${deliveryAddr}</div>` : '')
+    : (tableNum ? `<div class="table-row">🪑 Table ${tableNum}</div>` : '');
   const win = window.open('', '', 'width=400,height=600');
-  win.document.write(`<html><head><title>Bill ${order.order_number}</title><style>body{font-family:monospace;padding:20px;max-width:320px;margin:auto}h2{text-align:center}hr{border:1px dashed #000}.row{display:flex;justify-content:space-between;margin:4px 0}.total{font-size:18px;font-weight:bold}</style></head><body><h2>☕ C3 Restro</h2><div style="text-align:center">Order: ${order.order_number}</div><div style="text-align:center;font-size:12px">${new Date(order.created_at).toLocaleString()}</div><hr>${items.map(i=>`<div class="row"><span>${i.name} x${i.qty}</span><span>₹${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}<hr><div class="row"><span>Subtotal</span><span>₹${Number(order.subtotal).toFixed(2)}</span></div>${order.discount>0?`<div class="row"><span>Discount</span><span>-₹${Number(order.discount).toFixed(2)}</span></div>`:''}<hr><div class="row total"><span>TOTAL</span><span>₹${Number(order.total).toFixed(2)}</span></div><hr><p style="text-align:center;font-size:12px">Thank you! Visit again ❤️</p></body></html>`);
+  win.document.write(`<html><head><title>Bill ${order.order_number}</title><style>body{font-family:monospace;padding:20px;max-width:320px;margin:auto}h2{text-align:center}hr{border:1px dashed #000}.row{display:flex;justify-content:space-between;margin:4px 0}.total{font-size:18px;font-weight:bold}.table-row{text-align:center;font-size:15px;font-weight:bold;background:#fff7ed;padding:6px;border-radius:6px;margin:8px 0;border:1px solid #fed7aa}.type-row{text-align:center;font-size:12px;color:#555;margin:4px 0}</style></head><body><h2>☕ C3 Restro</h2><div style="text-align:center">Order: ${order.order_number}</div><div style="text-align:center;font-size:12px">${new Date(order.created_at).toLocaleString()}</div><div class="type-row">${orderTypeLabel}</div>${infoRow}<hr>${items.map(i=>`<div class="row"><span>${i.name} x${i.qty}</span><span>₹${(i.price*i.qty).toFixed(2)}</span></div>`).join('')}<hr><div class="row"><span>Subtotal</span><span>₹${Number(order.subtotal).toFixed(2)}</span></div>${order.discount>0?`<div class="row"><span>Discount</span><span>-₹${Number(order.discount).toFixed(2)}</span></div>`:''}<hr><div class="row total"><span>TOTAL</span><span>₹${Number(order.total).toFixed(2)}</span></div>${pureNotes?`<hr><div style="font-size:12px">📝 ${pureNotes}</div>`:''}<hr><p style="text-align:center;font-size:12px">Thank you! Visit again ❤️</p></body></html>`);
   win.document.close(); win.print();
 }
 
@@ -2808,6 +3487,111 @@ async function confirmResetDemo() {
   else toast('Failed', 'error');
 }
 
+function openResetDataModal() {
+  const html = `
+    <div style="margin-bottom:18px;padding:14px 16px;background:var(--danger-bg);border:1px solid #fca5a5;border-radius:10px;font-size:13px;color:var(--danger)">
+      ⚠️ <strong>Warning:</strong> This action is <strong>permanent and cannot be undone</strong>. Please take a database backup before proceeding.
+    </div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px;font-weight:600">Select the data you want to permanently delete:</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--danger)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <input type="checkbox" id="rst-orders" style="margin-top:2px;accent-color:var(--danger)">
+        <div><div style="font-weight:600;font-size:13px">🧾 Orders &amp; Coupon Usage</div><div style="font-size:11.5px;color:var(--text3)">Deletes all order records and coupon redemption history</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--danger)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <input type="checkbox" id="rst-points" style="margin-top:2px;accent-color:var(--danger)">
+        <div><div style="font-weight:600;font-size:13px">💎 Customer Points &amp; Transactions</div><div style="font-size:11.5px;color:var(--text3)">Resets all BrewCoins to 0 and clears transaction history. Membership levels reset to Bronze</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--danger)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <input type="checkbox" id="rst-coupons" style="margin-top:2px;accent-color:var(--danger)">
+        <div><div style="font-weight:600;font-size:13px">🎟️ Coupons</div><div style="font-size:11.5px;color:var(--text3)">Permanently deletes all coupon codes and their usage records</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--danger)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <input type="checkbox" id="rst-menu" style="margin-top:2px;accent-color:var(--danger)">
+        <div><div style="font-weight:600;font-size:13px">🍽️ Menu Items &amp; Categories</div><div style="font-size:11.5px;color:var(--text3)">Deletes all menu items and all menu categories</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--danger)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <input type="checkbox" id="rst-combos" style="margin-top:2px;accent-color:var(--danger)">
+        <div><div style="font-weight:600;font-size:13px">🎁 Combo Offers</div><div style="font-size:11.5px;color:var(--text3)">Removes all combo deals from the menu</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--danger)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <input type="checkbox" id="rst-rewards" style="margin-top:2px;accent-color:var(--danger)">
+        <div><div style="font-weight:600;font-size:13px">⭐ Rewards Catalog</div><div style="font-size:11.5px;color:var(--text3)">Deletes all loyalty rewards from the catalog</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--danger)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <input type="checkbox" id="rst-customers" style="margin-top:2px;accent-color:var(--danger)">
+        <div><div style="font-weight:600;font-size:13px">👥 All Customers</div><div style="font-size:11.5px;color:var(--text3);color:#ef4444;font-weight:500">⚠️ DANGER — Permanently deletes all customer accounts, their points, and order links</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s" onmouseenter="this.style.borderColor='var(--danger)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <input type="checkbox" id="rst-logs" style="margin-top:2px;accent-color:var(--danger)">
+        <div><div style="font-weight:600;font-size:13px">📋 Admin Activity Logs</div><div style="font-size:11.5px;color:var(--text3)">Wipes all admin action logs from the system</div></div>
+      </label>
+    </div>
+    <div style="margin-top:16px;padding:12px 14px;background:var(--bg3);border-radius:10px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="rst-select-all" onchange="toggleResetAll(this)" style="accent-color:var(--danger)">
+        <span style="font-weight:600;color:var(--danger)">☠️ Select All (Full Reset)</span>
+      </label>
+    </div>
+    <div style="margin-top:14px">
+      <label style="font-size:12.5px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Type <strong style="color:var(--danger)">RESET</strong> to confirm:</label>
+      <input type="text" class="form-input" id="rst-confirm-text" placeholder='Type "RESET" here' autocomplete="off" style="border-color:var(--border2)">
+    </div>`;
+
+  const footer = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-danger" onclick="executeResetData()">🗑️ Permanently Delete Selected</button>`;
+
+  openModal('🗑️ Reset Data', html, footer, true);
+}
+
+function toggleResetAll(checkbox) {
+  const ids = ['rst-orders','rst-points','rst-coupons','rst-menu','rst-combos','rst-rewards','rst-customers','rst-logs'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.checked = checkbox.checked; });
+}
+
+async function executeResetData() {
+  const confirmText = document.getElementById('rst-confirm-text')?.value?.trim();
+  if (confirmText !== 'RESET') { toast('Type RESET in the confirmation field to proceed', 'warning'); return; }
+
+  const scopeMap = {
+    'rst-orders': 'orders',
+    'rst-points': 'points',
+    'rst-coupons': 'coupons',
+    'rst-menu': 'menu',
+    'rst-combos': 'combos',
+    'rst-rewards': 'rewards',
+    'rst-customers': 'customers',
+    'rst-logs': 'logs',
+  };
+  const scope = [];
+  Object.entries(scopeMap).forEach(([elId, val]) => {
+    if (document.getElementById(elId)?.checked) scope.push(val);
+  });
+
+  if (!scope.length) { toast('Please select at least one data category to reset', 'warning'); return; }
+
+  const scopeLabels = scope.join(', ');
+  if (!confirm(`⚠️ FINAL WARNING\n\nYou are about to permanently delete:\n${scopeLabels}\n\nThis CANNOT be undone. Are you absolutely sure?`)) return;
+
+  closeModal();
+  toast('Resetting data…', 'info');
+  const res = await api('reset_data', { scope });
+  if (res.success) {
+    const cleared = res.cleared?.join(', ') || scopeLabels;
+    toast(`✅ Cleared: ${cleared}`, 'success');
+    loadDashboard();
+    // Refresh relevant pages if they're loaded
+    if (scope.includes('menu')) { try { loadMenuItems(1); loadCategories(); } catch(e){} }
+    if (scope.includes('coupons')) { try { loadCoupons(1); } catch(e){} }
+    if (scope.includes('rewards')) { try { loadRewards(); } catch(e){} }
+    if (scope.includes('orders')) { try { loadOrders(1); } catch(e){} }
+    if (scope.includes('customers') || scope.includes('points')) { try { loadCustomers(1); } catch(e){} }
+  } else {
+    toast(res.message || 'Reset failed', 'error');
+  }
+}
+
 async function changeAdminPassword() {
   const current = document.getElementById('cp-current').value;
   const newPw = document.getElementById('cp-new').value;
@@ -2959,14 +3743,34 @@ function debounce(fn, delay = 350) {
 window.addEventListener('DOMContentLoaded', () => {
   console.log('[C3 Restro] Admin Panel initializing...');
 
-  // ── Step 1: Load dashboard (first page shown) ──
+  // ── Step 1: Unlock AudioContext + build beep WAV on first click ──
+  const unlockAudio = () => {
+    try { getAudioCtx(); getBeepWavUrl(); } catch(e) {}
+    document.removeEventListener('click', unlockAudio);
+  };
+  document.addEventListener('click', unlockAudio);
+
+  // ── Step 2: Request notification permission (for background alerts) ──
+  // We do this after a short delay so it doesn't fire immediately on page load
+  setTimeout(async () => {
+    const granted = await requestNotificationPermission();
+    if (granted) {
+      console.log('[Notifications] Permission granted — background alerts active');
+      // Register Service Worker for background polling
+      await registerOrderServiceWorker();
+    } else {
+      console.warn('[Notifications] Permission denied — background alerts limited to tab-visible polling');
+    }
+  }, 2000);
+
+  // ── Step 3: Load dashboard ──
   loadDashboard().catch(e => console.error('[init] loadDashboard failed:', e));
 
-  // ── Step 2: Notifications polling ──
+  // ── Step 4: Foreground notifications polling (every 20s) ──
   loadNotifications();
-  setInterval(() => loadNotifications(), 60000);
+  setInterval(() => loadNotifications(), 20000);
 
-  // ── Step 3: Debounced search inputs ──
+  // ── Step 5: Debounced search inputs ──
   const searches = [
     ['order-search',  () => loadOrders(1)],
     ['cust-search',   () => loadCustomers(1)],
@@ -2976,20 +3780,17 @@ window.addEventListener('DOMContentLoaded', () => {
   searches.forEach(([id, fn]) => {
     const el = document.getElementById(id);
     if (el) {
-      el.oninput = null; // remove inline handler
+      el.oninput = null;
       el.addEventListener('input', debounce(fn));
     }
   });
 
-  // ── Step 4: Force-trigger the currently active page loader ──
-  // This is the KEY FIX: ensures data loads even if showPage was somehow missed
+  // ── Step 6: Force-trigger the currently active page loader ──
   setTimeout(() => {
     const activePage = document.querySelector('.page.active');
     if (activePage) {
       const pageId = activePage.id.replace('page-', '');
-      console.log('[init] Active page on load:', pageId);
       if (pageId !== 'dashboard' && pageLoaders[pageId]) {
-        console.log('[init] Triggering loader for:', pageId);
         try { pageLoaders[pageId](); } catch(e) { console.error(e); }
       }
     }

@@ -27,7 +27,7 @@ define('POINTS_REDEEM_RATE', 40);       // 40 points = ₹1 redemption value (wa
 define('MAX_REDEEM_PERCENT', 15);       // Max 15% of order value can be paid by points (was 20%)
 define('WELCOME_BONUS_POINTS', 100);    // Welcome points on signup (was 200)
 define('REFERRAL_BONUS_POINTS', 150);   // Both referrer & new user get this (was 300)
-define('BIRTHDAY_BONUS_POINTS', 300);   // Birthday month bonus (was 500)
+define('BIRTHDAY_BONUS_POINTS', 300);   // Birthday bonus (was 500)
 define('DAILY_LOGIN_MIN', 5);           // Min daily login bonus points (was 10)
 define('DAILY_LOGIN_MAX', 15);          // Max daily login bonus points (was 30)
 define('STREAK_7_DAY_BONUS', 75);       // 7-day streak milestone bonus (was 150)
@@ -122,7 +122,7 @@ function setupDatabase()
         `total` DECIMAL(10,2),
         `coupon_code` VARCHAR(20),
         `status` ENUM('pending','confirmed','preparing','ready','completed','cancelled') DEFAULT 'pending',
-        `order_type` ENUM('dine-in','pickup') DEFAULT 'dine-in',
+        `order_type` ENUM('dine-in','home-delivery') DEFAULT 'dine-in',
         `points_earned` INT DEFAULT 0,
         `notes` TEXT,
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -238,6 +238,11 @@ function setupDatabase()
     insertSampleData($db);
   }
 
+  // Migrate: ensure orders.order_type ENUM includes 'home-delivery' for existing databases
+  try {
+    $db->exec("ALTER TABLE `orders` MODIFY COLUMN `order_type` ENUM('dine-in','home-delivery') DEFAULT 'dine-in'");
+  } catch (PDOException $e) { /* Already up to date */ }
+
   // Seed game settings
   $gsCount = $db->query("SELECT COUNT(*) FROM game_settings")->fetchColumn();
   if ($gsCount == 0) {
@@ -250,11 +255,11 @@ function setupDatabase()
       ('dailytap',1,45,15,40,3)
     ");
   }
-  // Seed default cafe settings
-  $db->exec("INSERT IGNORE INTO cafe_settings (`key`,`value`) VALUES
-    ('instagram_url','https://www.instagram.com/arabica_officiall'),
+  // Seed default cafe settings (ON DUPLICATE KEY UPDATE ensures stale values are corrected)
+  $db->exec("INSERT INTO cafe_settings (`key`,`value`) VALUES
+    ('instagram_url','https://www.instagram.com/c3restro'),
     ('cafe_name','C3 Restaurant')
-  ");
+  ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)");
 }
 
 function insertSampleData($db)
@@ -363,7 +368,7 @@ function generateReferralCode($name)
 function isBirthdayMonth($birthday)
 {
   if (!$birthday) return false;
-  return date('m', strtotime($birthday)) === date('m');
+  $bday = date_create($birthday); return $bday && date_format($bday,'m-d') === date('m-d');
 }
 
 // ============================================================
@@ -392,7 +397,7 @@ function mapDisplayToActual($display_reward, $actual_discount)
   // What text to show in wallet based on display name + actual discount
   if ($actual_discount == 0) return 'Better Luck Next Time';
   if ($actual_discount == 20) return 'Mega Reward: 20% OFF';
-  return 'Lucky Coupon: 10% OFF';
+  return 'Lucky Reward: 10% OFF';
 }
 
 function generateGameCoupon($customer_id, $game_type, $display_reward, $db)
@@ -460,8 +465,6 @@ if (isset($_GET['api'])) {
     $mobile = trim($data['mobile'] ?? '');
     $password = $data['password'] ?? '';
     $birthday = $data['birthday'] ?? null;
-    $refer_code = strtoupper(trim($data['refer_code'] ?? ''));
-
     if (!$name || !$mobile || !$password) {
       echo json_encode(['success' => false, 'message' => 'All fields required']);
       exit;
@@ -473,36 +476,14 @@ if (isset($_GET['api'])) {
       exit;
     }
 
-    // Validate referral code if provided
-    $referred_by_id = null;
-    if ($refer_code) {
-      $ref_check = $db->prepare("SELECT id FROM customers WHERE referral_code=?");
-      $ref_check->execute([$refer_code]);
-      $referrer = $ref_check->fetch();
-      if ($referrer) {
-        $referred_by_id = $referrer['id'];
-      } else {
-        echo json_encode(['success' => false, 'message' => 'Invalid referral code']);
-        exit;
-      }
-    }
-
     $hash = password_hash($password, PASSWORD_DEFAULT);
     $referral = generateReferralCode($name);
     $stmt = $db->prepare("INSERT INTO customers (full_name,mobile,password,birthday,referral_code,referred_by) VALUES (?,?,?,?,?,?)");
-    $stmt->execute([$name, $mobile, $hash, $birthday ?: null, $referral, $referred_by_id]);
+    $stmt->execute([$name, $mobile, $hash, $birthday ?: null, $referral, null]);
     $id = $db->lastInsertId();
     // Welcome points
     $db->prepare("UPDATE customers SET points=? WHERE id=?")->execute([WELCOME_BONUS_POINTS, $id]);
     $db->prepare("INSERT INTO point_transactions (customer_id,points,type,description) VALUES (?,?,'bonus','🎉 Welcome bonus — start earning!')")->execute([$id, WELCOME_BONUS_POINTS]);
-    // Referral bonus for BOTH users
-    if ($referred_by_id) {
-      $db->prepare("UPDATE customers SET points=points+? WHERE id=?")->execute([REFERRAL_BONUS_POINTS, $referred_by_id]);
-      $db->prepare("INSERT INTO point_transactions (customer_id,points,type,description) VALUES (?,?,'referral','👥 Referral bonus — friend joined!')")->execute([$referred_by_id, REFERRAL_BONUS_POINTS]);
-      // New user also gets referral bonus
-      $db->prepare("UPDATE customers SET points=points+? WHERE id=?")->execute([REFERRAL_BONUS_POINTS, $id]);
-      $db->prepare("INSERT INTO point_transactions (customer_id,points,type,description) VALUES (?,?,'referral','👥 Referral bonus — joined via friend!')")->execute([$id, REFERRAL_BONUS_POINTS]);
-    }
     $_SESSION['customer_id'] = $id;
     echo json_encode(['success' => true, 'message' => 'Account created successfully!']);
     exit;
@@ -632,7 +613,6 @@ if (isset($_GET['api'])) {
   if ($action === 'place_order' && isLoggedIn()) {
     $data = json_decode(file_get_contents('php://input'), true);
     $items = $data['items'] ?? [];
-    $coupon = $data['coupon'] ?? '';
     $points_use = intval($data['points_use'] ?? 0);
     $order_type = $data['order_type'] ?? 'dine-in';
     $notes = $data['notes'] ?? '';
@@ -647,67 +627,41 @@ if (isset($_GET['api'])) {
       $subtotal += $item['price'] * $item['qty'];
     }
 
-    $discount = 0;
-    $coupon_id = null;
-    if ($coupon) {
-      $c = $db->prepare("SELECT * FROM coupons WHERE code=? AND is_active=1 AND (expires_at IS NULL OR expires_at >= CURDATE()) AND used_count < max_uses");
-      $c->execute([strtoupper($coupon)]);
-      $cv = $c->fetch();
-      if ($cv && $subtotal >= $cv['min_order']) {
-        if ($cv['discount_type'] === 'percent') $discount = $subtotal * $cv['discount_value'] / 100;
-        else $discount = $cv['discount_value'];
-        $coupon_id = $cv['id'];
-      } else {
-        echo json_encode(['success' => false, 'message' => 'Invalid or expired coupon']);
-        exit;
-      }
-    }
-
     $customer = getCustomer();
     // Tier multiplier for earning
     $multiplier = 1.0;
-    if ($customer['membership_level'] === 'Silver') $multiplier = 1.15;   // was 1.2
-    elseif ($customer['membership_level'] === 'Gold') $multiplier = 1.3;  // was 1.5
-    elseif ($customer['membership_level'] === 'Platinum') $multiplier = 1.5; // was 2.0
+    if ($customer['membership_level'] === 'Silver') $multiplier = 1.15;
+    elseif ($customer['membership_level'] === 'Gold') $multiplier = 1.3;
+    elseif ($customer['membership_level'] === 'Platinum') $multiplier = 1.5;
 
     $points_discount = 0;
     if ($points_use > 0) {
-      // 40 points = ₹1 redemption; max redemption = MAX_REDEEM_PERCENT% of subtotal
       $max_redeem_rupees = $subtotal * (MAX_REDEEM_PERCENT / 100);
       $max_points_allowed = floor($max_redeem_rupees * POINTS_REDEEM_RATE);
       $max_use = min($points_use, $customer['points'], $max_points_allowed);
-      $points_discount = $max_use / POINTS_REDEEM_RATE; // convert points → rupees
+      $points_discount = $max_use / POINTS_REDEEM_RATE;
       $points_use = $max_use;
     }
 
-    $total = max(0, $subtotal - $discount - $points_discount);
-    // Earn 1 point per ₹1 spent, multiplied by tier
+    $total = max(0, $subtotal - $points_discount);
     $points_earned = floor($total * POINTS_PER_RUPEE * $multiplier);
     $order_num = generateOrderNumber();
 
-    $stmt = $db->prepare("INSERT INTO orders (customer_id,order_number,items_json,subtotal,discount,points_used,total,coupon_code,status,order_type,points_earned,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
-    $stmt->execute([$_SESSION['customer_id'], $order_num, json_encode($items), $subtotal, $discount + $points_discount, $points_use, $total, $coupon ?: null, 'pending', $order_type, $points_earned, $notes]);
+    $stmt = $db->prepare("INSERT INTO orders (customer_id,order_number,items_json,subtotal,discount,points_used,total,status,order_type,points_earned,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+    $stmt->execute([$_SESSION['customer_id'], $order_num, json_encode($items), $subtotal, $points_discount, $points_use, $total, 'pending', $order_type, $points_earned, $notes]);
     $order_id = $db->lastInsertId();
 
-    // Update customer points
     if ($points_use > 0) {
       $db->prepare("UPDATE customers SET points=points-? WHERE id=?")->execute([$points_use, $_SESSION['customer_id']]);
       $db->prepare("INSERT INTO point_transactions (customer_id,points,type,description) VALUES (?,-?,'redeem','Points redeemed on order $order_num (₹" . number_format($points_discount, 2) . " off at 40pts=₹1)')")->execute([$_SESSION['customer_id'], $points_use]);
     }
-    // NOTE: Points are NOT awarded here — they will be awarded only when admin marks the order as 'completed'
 
-    if ($coupon_id) {
-      $db->prepare("UPDATE coupons SET used_count=used_count+1 WHERE id=?")->execute([$coupon_id]);
-      $db->prepare("INSERT INTO coupon_usage (coupon_id,customer_id,order_id) VALUES (?,?,?)")->execute([$coupon_id, $_SESSION['customer_id'], $order_id]);
-    }
-
-    // Membership will be updated when order is marked completed and BrewCoins are actually awarded.
     echo json_encode(['success' => true, 'order_number' => $order_num, 'points_earned' => $points_earned, 'total' => $total]);
     exit;
   }
 
   // ============================================================
-  // UPDATE ORDER STATUS — awards BrewCoins ONLY on 'completed'
+  // UPDATE ORDER STATUS — awards C3 Coins ONLY on 'completed'
   // ============================================================
   if ($action === 'update_order_status' && isLoggedIn()) {
     $data = json_decode(file_get_contents('php://input'), true);
@@ -740,7 +694,7 @@ if (isset($_GET['api'])) {
 
     $points_awarded = 0;
 
-    // Award BrewCoins ONLY when status becomes 'completed'
+    // Award C3 Coins ONLY when status becomes 'completed'
     if ($new_status === 'completed') {
       $points_to_award = intval($order['points_earned']);
       $cust_id         = intval($order['customer_id']);
@@ -748,7 +702,7 @@ if (isset($_GET['api'])) {
 
       if ($points_to_award > 0) {
         $db->prepare("UPDATE customers SET points=points+? WHERE id=?")->execute([$points_to_award, $cust_id]);
-        $db->prepare("INSERT INTO point_transactions (customer_id,points,type,description) VALUES (?,?,'earn','BrewCoins earned — Order #$order_num_ref completed')")->execute([$cust_id, $points_to_award]);
+        $db->prepare("INSERT INTO point_transactions (customer_id,points,type,description) VALUES (?,?,'earn','C3 Coins earned — Order #$order_num_ref completed')")->execute([$cust_id, $points_to_award]);
 
         $new_pts_stmt = $db->prepare("SELECT points FROM customers WHERE id=?");
         $new_pts_stmt->execute([$cust_id]);
@@ -760,22 +714,6 @@ if (isset($_GET['api'])) {
     }
 
     echo json_encode(['success' => true, 'status' => $new_status, 'points_awarded' => $points_awarded]);
-    exit;
-  }
-
-  if ($action === 'validate_coupon' && isLoggedIn()) {
-    $data = json_decode(file_get_contents('php://input'), true);
-    $code = strtoupper(trim($data['code'] ?? ''));
-    $amount = floatval($data['amount'] ?? 0);
-    $c = $db->prepare("SELECT * FROM coupons WHERE code=? AND is_active=1 AND (expires_at IS NULL OR expires_at >= CURDATE()) AND used_count < max_uses");
-    $c->execute([$code]);
-    $cv = $c->fetch();
-    if ($cv && $amount >= $cv['min_order']) {
-      $disc = $cv['discount_type'] === 'percent' ? $amount * $cv['discount_value'] / 100 : $cv['discount_value'];
-      echo json_encode(['success' => true, 'discount' => $disc, 'description' => $cv['description']]);
-    } else {
-      echo json_encode(['success' => false, 'message' => 'Invalid or inapplicable coupon']);
-    }
     exit;
   }
 
@@ -1109,7 +1047,9 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       scroll-behavior: smooth;
       -webkit-tap-highlight-color: transparent;
     }
-
+      
+     
+      
     body {
       font-family: var(--font-body);
       background: var(--bg);
@@ -1837,6 +1777,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
 
     .card-pad {
       padding: 20px;
+     
     }
 
     .card-header {
@@ -2597,6 +2538,14 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       flex-direction: column;
       justify-content: flex-end;
     }
+      
+       .combo-card-overlay {
+             background:
+            linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+            url('your-image-url');
+            background-size: cover;
+            background-position: center;
+      }
 
     .combo-name {
       color: white;
@@ -3143,6 +3092,21 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       justify-content: center;
       cursor: pointer;
       font-size: 16px;
+    }
+
+    [data-theme="dark"] .toast {
+      background: var(--bg-card);
+      border-color: var(--border);
+    }
+
+    [data-theme="dark"] .modal-sheet,
+    [data-theme="dark"] .modal-dialog {
+      background: var(--bg-card);
+    }
+
+    [data-theme="dark"] .modal-close {
+      background: var(--bg-secondary);
+      color: var(--text);
     }
 
     /* ============================================================
@@ -3899,19 +3863,23 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
     }
 
     .lb-rank.gold {
-      background: #FEF3C7;
+      background: rgba(245, 158, 11, 0.15);
       color: #D97706;
     }
 
     .lb-rank.silver {
-      background: #F1F5F9;
+      background: rgba(148, 163, 184, 0.15);
       color: #64748B;
     }
 
     .lb-rank.bronze {
-      background: #FEF9F0;
+      background: rgba(205, 127, 50, 0.15);
       color: #92400E;
     }
+
+    [data-theme="dark"] .lb-rank.gold { color: #FBBF24; }
+    [data-theme="dark"] .lb-rank.silver { color: #94A3B8; }
+    [data-theme="dark"] .lb-rank.bronze { color: #CD7F32; }
 
     .lb-name {
       flex: 1;
@@ -4152,9 +4120,13 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 22px 20px 18px;
-      box-shadow: 0 8px 40px rgba(76, 29, 149, 0.22), var(--shadow-lg);
+      box-shadow: 0 8px 40px rgba(76, 29, 149, 0.18), var(--shadow-lg);
       text-align: center;
       animation: popupSlideUp 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    [data-theme="dark"] .rewards-popup {
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), var(--shadow-lg);
     }
 
     .rewards-popup.hidden {
@@ -4431,6 +4403,364 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       color: #EF4444;
     }
 
+    /* ============================================================
+   SKELETON LOADERS
+   ============================================================ */
+    .skel {
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-light) 50%, var(--bg-secondary) 75%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: var(--radius-sm);
+    }
+    .skel-card { height: 96px; border-radius: var(--radius); margin-bottom: 12px; }
+    .skel-line { height: 14px; margin-bottom: 8px; }
+    .skel-line.short { width: 60%; }
+    .skel-circle { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; }
+    .skel-menu-item {
+      display: flex; gap: 0; border-radius: var(--radius); overflow: hidden;
+      margin-bottom: 12px; border: 1px solid var(--border);
+    }
+    .skel-menu-img { width: 100px; height: 100px; flex-shrink: 0; background: var(--bg-secondary); animation: shimmer 1.4s infinite; background-size: 400% 100%; background-image: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-light) 50%, var(--bg-secondary) 75%); }
+    .skel-menu-body { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* ============================================================
+   CART FLY ANIMATION
+   ============================================================ */
+    @keyframes flyToCart {
+      0%   { opacity: 1; transform: scale(1) translate(0,0); }
+      60%  { opacity: 1; transform: scale(0.7) translate(var(--fly-x), var(--fly-y)); }
+      100% { opacity: 0; transform: scale(0.2) translate(var(--fly-x2), var(--fly-y2)); }
+    }
+    .cart-fly-dot {
+      position: fixed; width: 20px; height: 20px; border-radius: 50%;
+      background: var(--grad); z-index: 9999; pointer-events: none;
+      box-shadow: var(--shadow-green);
+      animation: flyToCart 0.55s cubic-bezier(0.4,0,0.6,1) forwards;
+    }
+
+    /* ============================================================
+   FAVOURITE BUTTON
+   ============================================================ */
+    .fav-btn {
+      position: absolute; top: 8px; right: 8px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--bg-card); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; cursor: pointer; z-index: 2;
+      transition: var(--transition-bounce);
+      box-shadow: var(--shadow-sm);
+    }
+    .fav-btn:active { transform: scale(0.85); }
+    .fav-btn.active { background: #fff0f3; border-color: #f43f5e; }
+
+    /* ============================================================
+   SWIPE-TO-DELETE CART ITEM
+   ============================================================ */
+    .cart-item-wrap {
+      position: relative; overflow: hidden; border-radius: var(--radius-sm);
+    }
+    .cart-item-delete-bg {
+      position: absolute; right: 0; top: 0; bottom: 0;
+      width: 80px; background: var(--danger);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: white; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+    .cart-item-swipeable {
+      position: relative; background: var(--bg-card);
+      transition: transform 0.2s ease;
+      touch-action: pan-y;
+    }
+
+    /* ============================================================
+   ORDER STATUS PULSE INDICATOR
+   ============================================================ */
+    .status-pulse {
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .status-pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--gold); flex-shrink: 0;
+      animation: pulseDot 1.5s ease-in-out infinite;
+    }
+    .status-pulse-dot.green { background: var(--success); }
+    .status-pulse-dot.red   { background: var(--danger); }
+    @keyframes pulseDot {
+      0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+      50%      { box-shadow: 0 0 0 5px transparent; opacity: 0.7; }
+    }
+
+    /* ============================================================
+   ORDER COUNTDOWN TIMER CARD
+   ============================================================ */
+    .order-countdown-bar {
+      position: fixed;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      z-index: 600;
+      width: calc(100% - 24px);
+      max-width: 460px;
+      background: var(--bg-card);
+      border: 1.5px solid var(--primary-light);
+      border-radius: var(--radius-lg);
+      padding: 13px 16px 11px;
+      box-shadow: 0 6px 32px rgba(26,92,56,0.18), var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: countdownSlideUp 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
+      cursor: pointer;
+    }
+    .order-countdown-bar.hidden { display: none; }
+    @keyframes countdownSlideUp {
+      from { opacity:0; transform: translateX(-50%) translateY(30px); }
+      to   { opacity:1; transform: translateX(-50%) translateY(0); }
+    }
+    .order-countdown-bar.urgent {
+      border-color: #F59E0B;
+      background: linear-gradient(135deg, rgba(245,158,11,0.07), var(--bg-card));
+      animation: urgentPulse 1.2s ease-in-out infinite;
+    }
+    .order-countdown-bar.done {
+      border-color: var(--success);
+      background: linear-gradient(135deg, rgba(16,185,129,0.08), var(--bg-card));
+    }
+    @keyframes urgentPulse {
+      0%,100% { box-shadow: 0 6px 32px rgba(245,158,11,0.15); }
+      50%      { box-shadow: 0 6px 32px rgba(245,158,11,0.45); }
+    }
+    .countdown-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+    .order-countdown-bar:hover .countdown-icon { transform: scale(1.15); }
+    .countdown-body { flex: 1; min-width: 0; }
+    .countdown-title {
+      font-size: 13px; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .countdown-sub {
+      font-size: 11px; color: var(--text-muted); margin-top: 1px;
+    }
+    .countdown-time {
+      font-size: 22px; font-weight: 900;
+      font-family: var(--font-display);
+      color: var(--primary);
+      letter-spacing: -0.5px;
+      flex-shrink: 0;
+      min-width: 60px;
+      text-align: right;
+      transition: color 0.4s ease;
+    }
+    .order-countdown-bar.urgent .countdown-time { color: #D97706; }
+    .order-countdown-bar.done .countdown-time   { color: var(--success); }
+    .countdown-progress-track {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+      background: var(--border); border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden;
+    }
+    .countdown-progress-fill {
+      height: 100%; background: var(--grad);
+      transition: width 1s linear, background 0.4s ease;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    }
+    .order-countdown-bar.urgent .countdown-progress-fill { background: linear-gradient(90deg,#F59E0B,#EF4444); }
+    .order-countdown-bar.done   .countdown-progress-fill { background: var(--success); width:100%!important; }
+
+    /* ============================================================
+   BADGE PULSE ON CART ADD
+   ============================================================ */
+    @keyframes badgePop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.65); }
+      70%  { transform: scale(0.88); }
+      100% { transform: scale(1); }
+    }
+    .badge-pop { animation: badgePop 0.38s cubic-bezier(0.34,1.56,0.64,1); }
+
+    /* ============================================================
+   STREAK FIRE FLICKER ANIMATION
+   ============================================================ */
+    @keyframes streakFlicker {
+      0%,100% { transform: scale(1) rotate(-2deg); filter: drop-shadow(0 0 4px rgba(239,68,68,0.5)); }
+      30%      { transform: scale(1.18) rotate(3deg); filter: drop-shadow(0 0 10px rgba(245,158,11,0.9)); }
+      60%      { transform: scale(0.95) rotate(-1deg); filter: drop-shadow(0 0 6px rgba(239,68,68,0.7)); }
+    }
+    .streak-num { animation: streakFlicker 1.4s ease-in-out infinite; display: inline-block; }
+
+    /* ============================================================
+   TIER-UP MODAL BOUNCE
+   ============================================================ */
+    @keyframes bounceIn {
+      0%   { transform: scale(0.2) rotate(-15deg); opacity:0; }
+      55%  { transform: scale(1.2) rotate(5deg); opacity:1; }
+      80%  { transform: scale(0.93) rotate(-2deg); }
+      100% { transform: scale(1) rotate(0); }
+    }
+    .tier-up-icon { animation: bounceIn 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+    /* ============================================================
+   SKELETON → CONTENT FADE-IN
+   ============================================================ */
+    @keyframes fadeSlideUp {
+      from { opacity:0; transform:translateY(14px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    #dashboard-content > *,
+    #menu-content > *,
+    #loyalty-content > *,
+    #games-content > *,
+    #profile-content > * {
+      animation: fadeSlideUp 0.32s ease both;
+    }
+
+    /* ============================================================
+   POINTS FLOAT-UP ON EARN
+   ============================================================ */
+    @keyframes floatUp {
+      0%   { opacity:1; transform: translateY(0) scale(1); }
+      100% { opacity:0; transform: translateY(-60px) scale(1.3); }
+    }
+    .points-float {
+      position: fixed; pointer-events: none; z-index: 99999;
+      font-size: 18px; font-weight: 900; color: var(--primary);
+      text-shadow: 0 2px 8px rgba(26,92,56,0.3);
+      animation: floatUp 1.2s ease-out forwards;
+    }
+
+    /* ============================================================
+   PULL-TO-REFRESH INDICATOR
+   ============================================================ */
+    .ptr-indicator {
+      position: fixed; top: 66px; left: 50%; transform: translateX(-50%) translateY(-60px);
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 8px 16px; font-size: 13px;
+      font-weight: 600; color: var(--text-secondary);
+      display: flex; align-items: center; gap: 8px;
+      z-index: 90; transition: transform 0.3s ease, opacity 0.3s ease;
+      box-shadow: var(--shadow); opacity: 0;
+    }
+    .ptr-indicator.visible { transform: translateX(-50%) translateY(8px); opacity: 1; }
+    .ptr-spinner {
+      width: 16px; height: 16px; border: 2px solid var(--border);
+      border-top-color: var(--primary); border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* ============================================================
+   MENU TYPE TABS (Dishes / Combos)
+   ============================================================ */
+    .menu-type-tabs {
+      display: flex; gap: 0; margin-bottom: 14px;
+      background: var(--bg-secondary); border-radius: var(--radius);
+      padding: 4px; border: 1px solid var(--border);
+    }
+    .menu-type-tab {
+      flex: 1; text-align: center; padding: 9px 6px;
+      border-radius: calc(var(--radius) - 2px);
+      font-size: 13px; font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer; transition: var(--transition);
+    }
+    .menu-type-tab.active {
+      background: var(--primary); color: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ============================================================
+   PAGINATION
+   ============================================================ */
+    .pagination {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 16px 0 8px;
+    }
+    .page-btn {
+      min-width: 36px; height: 36px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: var(--bg-card);
+      color: var(--text); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: var(--transition);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .page-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-glow); }
+    .page-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+    .page-info { font-size: 12px; color: var(--text-secondary); padding: 0 4px; }
+
+    /* ============================================================
+   SEARCH HISTORY CHIPS
+   ============================================================ */
+    .search-chips {
+      display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 0 10px;
+    }
+    .search-chip {
+      padding: 5px 12px; background: var(--bg-secondary);
+      border: 1px solid var(--border); border-radius: 20px;
+      font-size: 12px; font-weight: 500; color: var(--text-secondary);
+      cursor: pointer; transition: var(--transition); white-space: nowrap;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .search-chip:hover { background: var(--primary-glow); color: var(--primary); border-color: var(--primary-light); }
+    .search-chip .chip-x { font-size: 10px; opacity: 0.6; }
+
+    /* ============================================================
+   MILESTONE BADGES ON PROFILE
+   ============================================================ */
+    .milestones-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px;
+    }
+    .milestone-badge {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 8px; text-align: center;
+      transition: var(--transition-bounce);
+    }
+    .milestone-badge.unlocked {
+      background: var(--grad-soft); border-color: var(--primary-light);
+    }
+    .milestone-badge.unlocked:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .milestone-icon { font-size: 24px; margin-bottom: 4px; }
+    .milestone-name { font-size: 10px; font-weight: 700; letter-spacing: 0.2px; line-height: 1.3; }
+    .milestone-badge:not(.unlocked) { opacity: 0.45; filter: grayscale(1); }
+
+    /* ============================================================
+   REORDER BUTTON
+   ============================================================ */
+    .reorder-btn {
+      font-size: 11px; font-weight: 700; color: var(--primary);
+      background: var(--primary-glow); border: 1px solid var(--primary-light);
+      border-radius: 8px; padding: 4px 10px; cursor: pointer;
+      transition: var(--transition); white-space: nowrap;
+    }
+    .reorder-btn:hover { background: var(--primary); color: white; }
+
+    /* ============================================================
+   ESTIMATED WAIT TIME BADGE
+   ============================================================ */
+    .wait-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(245,158,11,0.12); color: var(--gold);
+      border: 1px solid rgba(245,158,11,0.25); border-radius: 8px;
+      font-size: 11px; font-weight: 700; padding: 3px 8px;
+    }
+
+    /* ============================================================
+   ITEM CUSTOMISATION SHEET
+   ============================================================ */
+    .customise-option {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--border-light);
+    }
+    .customise-option:last-child { border-bottom: none; }
+    .customise-label { font-size: 14px; font-weight: 500; }
+    .customise-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .customise-chip {
+      padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: 1.5px solid var(--border); background: var(--bg-secondary);
+      color: var(--text-secondary); cursor: pointer; transition: var(--transition);
+    }
+    .customise-chip.selected {
+      background: var(--primary); color: white; border-color: var(--primary);
+    }
+
     /* Floating Call Button */
     .call-float-btn {
       position: fixed;
@@ -4531,7 +4861,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
           <button class="btn btn-primary" onclick="doLogin()">
             <span id="login-btn-text">Sign In</span>
           </button>
-          <div class="divider-text">demo: 9876543210 / admin123</div>
+         
         </div>
 
         <!-- Signup Form -->
@@ -4560,13 +4890,6 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
           <div class="form-group">
             <label class="form-label">Birthday <span class="text-muted text-sm">(for special rewards!)</span></label>
             <input type="date" class="form-input" id="signup-birthday">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Referral Code <span class="text-muted text-sm">(optional — earn bonus points!)</span></label>
-            <div class="form-input-icon">
-              <span class="icon">🎁</span>
-              <input type="text" class="form-input" id="signup-refer-code" placeholder="Enter friend's referral code" maxlength="10" style="text-transform:uppercase;">
-            </div>
           </div>
           <button class="btn btn-primary" onclick="doSignup()">
             <span id="signup-btn-text">Create Account</span>
@@ -4623,9 +4946,16 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       <!-- MENU -->
       <div id="page-menu" class="page">
         <div id="menu-content">
-          <div class="page-loader">
-            <div class="spinner"></div>
-            <p>Loading menu...</p>
+          <div style="padding:4px 0;">
+            <div class="skel" style="height:44px;border-radius:22px;margin-bottom:14px;"></div>
+            <div style="display:flex;gap:8px;margin-bottom:18px;overflow:hidden;">
+              <div class="skel" style="height:34px;width:70px;border-radius:20px;flex-shrink:0;"></div>
+              <div class="skel" style="height:34px;width:80px;border-radius:20px;flex-shrink:0;"></div>
+              <div class="skel" style="height:34px;width:65px;border-radius:20px;flex-shrink:0;"></div>
+            </div>
+            <div class="skel-menu-item"><div class="skel-menu-img"></div><div class="skel-menu-body"><div class="skel skel-line"></div><div class="skel skel-line short"></div></div></div>
+            <div class="skel-menu-item"><div class="skel-menu-img"></div><div class="skel-menu-body"><div class="skel skel-line"></div><div class="skel skel-line short"></div></div></div>
+            <div class="skel-menu-item"><div class="skel-menu-img"></div><div class="skel-menu-body"><div class="skel skel-line"></div><div class="skel skel-line short"></div></div></div>
           </div>
         </div>
       </div>
@@ -4702,11 +5032,29 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
     </div>
   </div>
 
+  <!-- Pull-to-refresh indicator -->
+  <div class="ptr-indicator" id="ptr-indicator">
+    <div class="ptr-spinner"></div> Pull to refresh
+  </div>
+
+  <!-- Order Countdown Timer Bar -->
+  <!-- <div id="order-countdown-bar" class="order-countdown-bar hidden" onclick="goToPage('home')">
+    <div class="countdown-icon" id="countdown-icon">⏳</div>
+    <div class="countdown-body">
+      <div class="countdown-title" id="countdown-title">Order in progress…</div>
+      <div class="countdown-sub" id="countdown-sub">Tap to view dashboard</div>
+    </div>
+    <div class="countdown-time" id="countdown-time">--:--</div>
+    <div class="countdown-progress-track">
+      <div class="countdown-progress-fill" id="countdown-progress-fill" style="width:100%"></div>
+    </div>
+  </div> -->
+
   <!-- Toast Container -->
   <div id="toast-container"></div>
 
   <!-- Floating Instagram Button -->
-  <a id="ig-float-btn" href="https://www.instagram.com/arabica_officiall" target="_blank" rel="noopener" class="ig-float-btn" title="Follow us on Instagram">
+  <a id="ig-float-btn" href="https://www.instagram.com/c3restro" target="_blank" rel="noopener" class="ig-float-btn" title="Follow us on Instagram">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="2" y="2" width="20" height="20" rx="6" stroke="white" stroke-width="2" />
       <circle cx="12" cy="12" r="4.5" stroke="white" stroke-width="2" />
@@ -4716,7 +5064,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
   </a>
 
   <!-- Floating Call Button -->
-  <a href="tel:9575131552" class="call-float-btn" title="Call Us">
+  <a href="tel:9202420684" class="call-float-btn" title="Call Us">
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
       <path d="M3.654 1.328a.678.678 0 0 1 .737-.169l2.522 1.01c.329.132.445.52.28.822l-1.1 2.2a.678.678 0 0 0 .145.777l2.457 2.457a.678.678 0 0 0 .777.145l2.2-1.1c.302-.165.69-.049.822.28l1.01 2.522a.678.678 0 0 1-.168.737l-1.272 1.272c-.74.74-1.846 1.065-2.877.702-2.537-.89-5.33-3.683-6.22-6.22-.363-1.03-.038-2.137.702-2.877L3.654 1.328z" />
     </svg>
@@ -4728,7 +5076,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
   <div id="rewards-popup" class="rewards-popup hidden">
     <button class="rewards-popup-close" onclick="dismissRewardsPopup()">✕</button>
     <div class="rewards-popup-icon">🪙</div>
-    <div class="rewards-popup-title">Get 200 FREE BrewCoins!</div>
+    <div class="rewards-popup-title">Get 200 FREE C3 Coins!</div>
     <div class="rewards-popup-sub">Sign up in 30 seconds — get 100 welcome coins + earn coins on every order. 40 coins = ₹1 off!</div>
     <button class="rewards-popup-cta" onclick="dismissRewardsPopup();openAuthModal('signup')">Claim My 200 Coins 🎁</button>
     <div class="rewards-popup-skip" onclick="dismissRewardsPopup()">Maybe later</div>
@@ -4756,14 +5104,17 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       profileLoaded: false,
       searchQuery: '',
       activeCategory: 'all',
+      menuTab: 'dishes',   // 'dishes' | 'combos'
+      menuPage: 1,         // current pagination page
+      menuPageSize: 6,     // items per page
       orderType: 'dine-in',
-      couponCode: '',
-      couponDiscount: 0,
+      deliveryAddress: '',
+      tableNumber: '',
       pointsToUse: 0,
       darkMode: document.documentElement.dataset.theme === 'dark',
       isLoggedIn: <?= isLoggedIn() ? 'true' : 'false' ?>,
       rewardsPopupDismissed: false,
-      instagramUrl: 'https://www.instagram.com/arabica_officiall',
+      instagramUrl: 'https://www.instagram.com/c3restro',
     };
 
     // ============================================================
@@ -4894,112 +5245,172 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
     // ============================================================
     // AUTH — Guest-first modal approach
     // ============================================================
-    function openAuthModal(tab = 'login') {
+
+    // Tracks where to return after successful login/signup
+    // { page: 'cart', action: 'placeOrder' } etc.
+    State._authPending = null;
+
+    function openAuthModal(tab = 'login', pendingPage = null, pendingAction = null) {
       const screen = document.getElementById('auth-screen');
+      if (!screen) return;
+
+      // Store where to return after login
+      State._authPending = (pendingPage || pendingAction)
+        ? { page: pendingPage, action: pendingAction }
+        : null;
+
       screen.classList.remove('hidden');
-      // Lock background scroll so app content doesn't show through
       document.body.style.overflow = 'hidden';
       switchAuthTab(tab);
-      // Reset fields
-      ['login-mobile', 'login-password', 'signup-name', 'signup-mobile', 'signup-password'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-      document.getElementById('login-btn-text').textContent = 'Sign In';
-      document.getElementById('signup-btn-text').textContent = 'Create Account';
+
+      // Reset button labels safely (elements only exist when guest — guard with ?.)
+      const loginBtnText = document.getElementById('login-btn-text');
+      const signupBtnText = document.getElementById('signup-btn-text');
+      if (loginBtnText) loginBtnText.textContent = 'Sign In';
+      if (signupBtnText) signupBtnText.textContent = 'Create Account';
+
+      // Focus first field for faster UX
+      setTimeout(() => {
+        const first = tab === 'login'
+          ? document.getElementById('login-mobile')
+          : document.getElementById('signup-name');
+        if (first) first.focus();
+      }, 120);
     }
 
     function closeAuthModal() {
-      document.getElementById('auth-screen').classList.add('hidden');
-      // Restore background scroll
+      const screen = document.getElementById('auth-screen');
+      if (screen) screen.classList.add('hidden');
       document.body.style.overflow = '';
     }
 
     function switchAuthTab(tab) {
-      document.querySelectorAll('.auth-tab').forEach((el, i) => el.classList.toggle('active', (i === 0) === (tab === 'login')));
-      document.getElementById('login-form').classList.toggle('hidden', tab !== 'login');
-      document.getElementById('signup-form').classList.toggle('hidden', tab !== 'signup');
-      // Auto-fill referral code from URL ?ref= param
-      if (tab === 'signup') {
-        const urlRef = new URLSearchParams(window.location.search).get('ref');
-        const refInput = document.getElementById('signup-refer-code');
-        if (urlRef && refInput && !refInput.value) {
-          refInput.value = urlRef.toUpperCase();
-          toast('Referral code applied! 🎉', 'success', 2500);
-        }
-      }
+      document.querySelectorAll('.auth-tab').forEach((el, i) => {
+        el.classList.toggle('active', (i === 0) === (tab === 'login'));
+      });
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+      if (loginForm) loginForm.classList.toggle('hidden', tab !== 'login');
+      if (signupForm) signupForm.classList.toggle('hidden', tab !== 'signup');
+
     }
 
     async function doLogin() {
-      const mobile = document.getElementById('login-mobile').value.trim();
-      const password = document.getElementById('login-password').value;
-      const remember = document.getElementById('remember-me').checked;
+      const mobileEl = document.getElementById('login-mobile');
+      const passwordEl = document.getElementById('login-password');
+      const rememberEl = document.getElementById('remember-me');
+      if (!mobileEl || !passwordEl) return;
+
+      const mobile = mobileEl.value.trim();
+      const password = passwordEl.value;
+      const remember = rememberEl ? rememberEl.checked : false;
+
       if (!mobile || !password) {
         toast('Please fill all fields', 'warning');
         return;
       }
       const btn = document.getElementById('login-btn-text');
-      btn.innerHTML = '<span class="loading-spinner"></span>';
-      const res = await api('login', {
-        mobile,
-        password,
-        remember
-      });
-      if (res.success) {
-        toast('Welcome back!', 'success');
-        showApp();
-      } else {
-        toast(res.message || 'Login failed', 'error');
-        btn.textContent = 'Sign In';
+      if (btn) btn.innerHTML = '<span class="loading-spinner"></span>';
+
+      try {
+        const res = await api('login', { mobile, password, remember });
+        if (res.success) {
+          toast('Welcome back! 👋', 'success');
+          showApp();
+        } else {
+          toast(res.message || 'Login failed', 'error');
+          if (btn) btn.textContent = 'Sign In';
+        }
+      } catch(e) {
+        toast('Connection error. Try again.', 'error');
+        if (btn) btn.textContent = 'Sign In';
       }
     }
 
     async function doSignup() {
-      const full_name = document.getElementById('signup-name').value.trim();
-      const mobile = document.getElementById('signup-mobile').value.trim();
-      const password = document.getElementById('signup-password').value;
-      const birthday = document.getElementById('signup-birthday').value;
-      const refer_code = document.getElementById('signup-refer-code').value.trim().toUpperCase();
+      const nameEl     = document.getElementById('signup-name');
+      const mobileEl   = document.getElementById('signup-mobile');
+      const passwordEl = document.getElementById('signup-password');
+      const birthdayEl = document.getElementById('signup-birthday');
+      if (!nameEl || !mobileEl || !passwordEl) return;
+
+      const full_name  = nameEl.value.trim();
+      const mobile     = mobileEl.value.trim();
+      const password   = passwordEl.value;
+      const birthday   = birthdayEl ? birthdayEl.value : '';
+
       if (!full_name || !mobile || !password) {
         toast('Please fill all required fields', 'warning');
         return;
       }
       if (mobile.length !== 10) {
-        toast('Enter valid 10-digit mobile', 'warning');
+        toast('Enter valid 10-digit mobile number', 'warning');
         return;
       }
       const btn = document.getElementById('signup-btn-text');
-      btn.innerHTML = '<span class="loading-spinner"></span>';
-      const res = await api('signup', {
-        full_name,
-        mobile,
-        password,
-        birthday,
-        refer_code
-      });
-      if (res.success) {
-        triggerConfetti();
-        toast('🎉 ' + res.message + ' You got 200 welcome BrewCoins! 🪙', 'success');
-        showApp();
-      } else {
-        toast(res.message || 'Signup failed', 'error');
-        btn.textContent = 'Create Account';
+      if (btn) btn.innerHTML = '<span class="loading-spinner"></span>';
+
+      try {
+        const res = await api('signup', { full_name, mobile, password, birthday });
+        if (res.success) {
+          SFX.success();
+          haptic([50, 30, 80]);
+          triggerConfetti();
+          toast('🎉 ' + (res.message || 'Account created!') + ' Welcome aboard! 🪙', 'success');
+          showApp();
+        } else {
+          toast(res.message || 'Signup failed', 'error');
+          if (btn) btn.textContent = 'Create Account';
+        }
+      } catch(e) {
+        toast('Connection error. Try again.', 'error');
+        if (btn) btn.textContent = 'Create Account';
       }
     }
 
     function showApp() {
       closeAuthModal();
       State.isLoggedIn = true;
+
       // Show points chip, hide login button
       const loginBtn = document.getElementById('login-topnav-btn');
       if (loginBtn) loginBtn.style.display = 'none';
-      // Reload current page to reflect logged-in state
+
+      // Add points chip to topnav if it doesn't exist yet
+      const pointsChip = document.querySelector('.points-chip');
+      if (!pointsChip) {
+        const actions = document.querySelector('.topnav-actions');
+        if (actions) {
+          const chip = document.createElement('div');
+          chip.className = 'points-chip';
+          chip.id = 'topnav-points-chip';
+          chip.onclick = () => goToPage('loyalty');
+          chip.title = 'Your Points';
+          chip.innerHTML = '⭐ <span id="topnav-points">···</span>';
+          actions.appendChild(chip);
+        }
+      }
+
+      // Mark all pages stale so they reload with logged-in data
       State.dashboardLoaded = false;
       State.menuLoaded = false;
       State.loyaltyLoaded = false;
       State.profileLoaded = false;
-      // After login, go to dashboard
-      goToPage('home');
+      State.dashboard = null;
+
+      // Return to where the user was, or complete a pending action
+      const pending = State._authPending;
+      State._authPending = null;
+
+      if (pending && pending.action === 'placeOrder') {
+        // Return to cart and attempt order again
+        goToPage('cart');
+        setTimeout(() => placeOrder(), 300);
+      } else if (pending && pending.page) {
+        goToPage(pending.page);
+      } else {
+        goToPage('home');
+      }
     }
 
     async function doLogout() {
@@ -5142,7 +5553,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       if (!wallet || wallet.length === 0) {
         return `<div class="card"><div class="wallet-empty">
           <div class="wallet-empty-icon">👜</div>
-          <p>No rewards yet.<br>Play games to win coupons!</p>
+          <p>No rewards yet.<br>Play games to win prizes!</p>
         </div></div>`;
       }
       const items = wallet.map(w => {
@@ -5157,10 +5568,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
               <div class="wallet-title">${esc(w.display_reward)}</div>
               <div class="wallet-meta">${label}${minOrder} · Exp: ${expDate}</div>
             </div>
-            ${w.actual_discount > 0
-              ? `<div class="wallet-code" onclick="copyToClipboard('${esc(w.actual_coupon_code)}','Coupon copied!')">${esc(w.actual_coupon_code)}</div>`
-              : `<div class="wallet-code" style="background:var(--bg-secondary);color:var(--text-muted);cursor:default;">—</div>`
-            }
+            <div class="wallet-code" style="background:var(--bg-secondary);color:var(--text-muted);font-size:11px;">${w.is_used ? 'Used' : 'Active'}</div>
           </div>`;
       }).join('');
       return `<div class="card"><div class="card-pad" style="padding-top:4px;padding-bottom:4px;">${items}</div></div>`;
@@ -5302,6 +5710,8 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       if (window._spinState && window._spinState.spinning) return;
       btn.disabled = true;
       btn.innerHTML = '<span class="loading-spinner"></span>';
+      SFX.whoosh();
+      haptic(30);
       const canvas = document.getElementById('spin-canvas');
       if (!canvas) return;
 
@@ -5631,6 +6041,14 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       overlay.className = 'modal-overlay centered';
       const isWin = result.type === 'win';
       const pts = result.points_awarded || 0;
+      if (isWin) {
+        SFX.tada();
+        haptic([40, 20, 60]);
+        triggerMiniConfetti(document.querySelector('.games-grid'));
+      } else {
+        SFX.error();
+        haptic(30);
+      }
       overlay.innerHTML = `
         <div class="modal-dialog" style="max-width:320px;">
           <div class="game-result-icon">${isWin ? '🎉' : '✨'}</div>
@@ -5638,11 +6056,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
           <div style="text-align:center;background:linear-gradient(135deg,#FFD700,#FF8C00);border-radius:12px;padding:10px 16px;margin:12px 0;color:#fff;font-weight:700;font-size:18px;">
             +${pts} Points Earned! ⭐
           </div>
-          <div class="game-result-sub">${isWin ? `${result.actual_discount}% OFF Coupon` : 'Keep playing for bigger coupons!'}</div>
-          ${isWin ? `
-            <div class="game-result-code" onclick="copyToClipboard('${esc(result.code)}','Coupon copied!')">${esc(result.code)}</div>
-            <div class="game-result-expiry">Min order ₹${result.min_order} · Expires ${result.expiry} · Tap code to copy</div>
-          ` : ''}
+          <div class="game-result-sub">${isWin ? `${result.actual_discount}% OFF Reward Won! 🎉` : 'Keep playing for bigger rewards!'}</div>
           <button class="btn btn-primary w-full" onclick="this.closest('.modal-overlay').remove()">${isWin ? '🛍️ Shop Now' : 'OK 👍'}</button>
         </div>`;
       document.body.appendChild(overlay);
@@ -5664,10 +6078,11 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
     // NAVIGATION
     // ============================================================
     function goToPage(page) {
+      haptic(5);
       // Gate pages that require login for guests (dashboard + loyalty + games + profile)
       const authRequired = ['home', 'loyalty', 'games', 'profile'];
       if (authRequired.includes(page) && !State.isLoggedIn) {
-        openAuthModal('login');
+        openAuthModal('login', page, null);
         toast('Please sign in to access this section 🔐', 'info');
         return;
       }
@@ -5680,14 +6095,13 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       if (page === 'home' && !State.dashboardLoaded) loadDashboard();
       if (page === 'menu' && !State.menuLoaded) loadMenu();
       if (page === 'cart') {
-        // If logged in but dashboard not loaded yet, fetch points data first so coins slider shows
         if (State.isLoggedIn && !State.dashboard) {
           api('get_dashboard').then(data => {
             if (data && data.customer) State.dashboard = data;
-            renderCart();
-          }).catch(() => renderCart());
+            renderCart(); setTimeout(initSwipeDelete, 50);
+          }).catch(() => { renderCart(); setTimeout(initSwipeDelete, 50); });
         } else {
-          renderCart();
+          renderCart(); setTimeout(initSwipeDelete, 50);
         }
       }
       if (page === 'games') loadGamesPage();
@@ -5736,14 +6150,19 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       const el = document.getElementById('dashboard-content');
       // Show skeleton loader instead of spinner text for perceived speed
       el.innerHTML = `
-        <div style="padding:16px;animation:pulse 1.4s ease-in-out infinite;">
-          <div style="height:100px;border-radius:16px;background:var(--bg-secondary);margin-bottom:16px;"></div>
+        <div style="padding:4px 0;animation:pulse 1.4s ease-in-out infinite;">
+          <div class="skel skel-card" style="height:110px;margin-bottom:16px;"></div>
+          <div class="skel skel-card" style="height:70px;margin-bottom:16px;"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-            <div style="height:90px;border-radius:14px;background:var(--bg-secondary);"></div>
-            <div style="height:90px;border-radius:14px;background:var(--bg-secondary);"></div>
+            <div class="skel skel-card" style="height:88px;"></div>
+            <div class="skel skel-card" style="height:88px;"></div>
           </div>
-          <div style="height:60px;border-radius:14px;background:var(--bg-secondary);margin-bottom:12px;"></div>
-          <div style="height:120px;border-radius:14px;background:var(--bg-secondary);"></div>
+          <div class="skel skel-line" style="width:50%;margin-bottom:14px;"></div>
+          <div style="display:flex;gap:12px;overflow:hidden;">
+            <div class="skel" style="width:148px;height:130px;border-radius:var(--radius);flex-shrink:0;"></div>
+            <div class="skel" style="width:148px;height:130px;border-radius:var(--radius);flex-shrink:0;"></div>
+            <div class="skel" style="width:148px;height:130px;border-radius:var(--radius);flex-shrink:0;"></div>
+          </div>
         </div>
         <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.45}}</style>`;
       try {
@@ -5766,6 +6185,8 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
         // Update topnav points chip
         const pts = document.getElementById('topnav-points');
         if (pts) pts.textContent = data.customer.points + ' 🪙';
+        // Check for tier upgrade
+        checkTierUpgrade(data.customer.membership_level);
       } catch (e) {
         const isTimeout = e && e.message === 'timeout';
         el.innerHTML = `<div class="cart-empty"><div class="cart-empty-icon">⚠️</div><h3>${isTimeout ? 'Server Timeout' : 'Connection Error'}</h3><p>${isTimeout ? 'The server took too long to respond.' : 'Could not reach the server. Check your connection.'}</p><button class="btn btn-primary mt-16" style="width:auto;padding:12px 28px;" onclick="State.dashboardLoaded=false;loadDashboard()">Retry</button></div>`;
@@ -5799,7 +6220,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
         <div class="birthday-icon">🎂</div>
         <div class="birthday-text">
           <h3>Happy Birthday, ${esc(c.full_name.split(' ')[0])}!</h3>
-          <p>🎁 You've received 500 bonus points this month!</p>
+          <p>🎁 You've received 300 bonus C3 Coins on your birthday!</p>
         </div>
       </div>`;
       }
@@ -5867,7 +6288,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
         <div class="coin-anim">🪙</div>
         <div>
           <div class="coin-pts" id="coin-pts-display">${c.points}</div>
-          <div class="coin-label">BrewCoins · Worth ₹${pointsRupeeValue}</div>
+          <div class="coin-label">C3 Coins · Worth ₹${pointsRupeeValue}</div>
         </div>
       </div>
       <div class="coin-counter-right">
@@ -5882,7 +6303,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       <span style="font-size:20px;">🌟</span>
       <div style="flex:1;">
         <div style="font-weight:700;font-size:14px;">Daily Login Bonus!</div>
-        <div style="font-size:12px;opacity:0.85;">Tap to claim 10–30 free BrewCoins today</div>
+        <div style="font-size:12px;opacity:0.85;">Tap to claim 10–30 free C3 Coins today</div>
       </div>
       <span style="font-size:18px;font-weight:800;">→</span>
     </div>` : `
@@ -5982,11 +6403,18 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       if (btn) btn.style.opacity = '0.6';
       const res = await api('claim_daily_bonus');
       if (res.success) {
+        SFX.coin();
+        haptic([30, 20, 30]);
         triggerConfetti();
-        toast(`🌟 +${res.bonus} BrewCoins credited! Keep the streak alive!`, 'success', 3500);
+        floatPoints(res.bonus, btn);
+        toast(`🌟 +${res.bonus} C3 Coins credited! Keep the streak alive!`, 'success', 3500);
         State.dashboardLoaded = false;
         State.loyaltyLoaded = false;
         await loadDashboard();
+        // Check tier upgrade
+        if (State.dashboard && State.dashboard.customer) {
+          checkTierUpgrade(State.dashboard.customer.membership_level);
+        }
       } else if (res.already_claimed) {
         toast('✅ Already claimed today! Come back tomorrow 🌅', 'info');
       } else {
@@ -6022,86 +6450,83 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       } = State.menu;
       const q = State.searchQuery.toLowerCase();
       const cat = State.activeCategory;
+      const tab = State.menuTab; // 'dishes' or 'combos'
 
-      let filteredItems = items.filter(item => {
-        const matchSearch = !q || item.name.toLowerCase().includes(q) || (item.description || '').toLowerCase().includes(q);
-        const matchCat = cat === 'all' || item.category_id == cat;
-        return matchSearch && matchCat;
-      });
+      // ---- Menu type tabs (Dishes / Combos / Drinks) ----
+      const menuTypeTabsHtml = `
+    <div class="menu-type-tabs" id="menu-type-tabs">
+      <div class="menu-type-tab ${tab==='dishes'?'active':''}" onclick="switchMenuTab('dishes')">🍽️ Dishes</div>
+      <div class="menu-type-tab ${tab==='combos'?'active':''}" onclick="switchMenuTab('combos')">🎁 Combo Offers</div>
+      <div class="menu-type-tab ${tab==='drinks'?'active':''}" onclick="switchMenuTab('drinks')">🥤 Drinks</div>
+    </div>`;
 
-      // Group by category
-      const grouped = {};
-      filteredItems.forEach(item => {
-        const cname = item.category_name || 'Other';
-        if (!grouped[cname]) grouped[cname] = [];
-        grouped[cname].push(item);
-      });
-
-      const catTabsHtml = `
+      // ---- Category tabs (only shown on Dishes tab) ----
+      const catTabsHtml = tab === 'dishes' ? `
     <div class="category-tabs" id="cat-tabs">
       <div class="cat-tab ${cat==='all'?'active':''}" onclick="filterCategory('all')">All ✨</div>
       ${categories.map(c => `<div class="cat-tab ${cat==c.id?'active':''}" onclick="filterCategory(${c.id})">${c.icon} ${esc(c.name)}</div>`).join('')}
-    </div>`;
+    </div>` : '';
 
-      let itemsHtml = '';
-      if (filteredItems.length === 0) {
-        itemsHtml = `<div style="text-align:center;padding:48px 20px;">
-      <div style="font-size:48px;margin-bottom:12px;opacity:0.4">🔍</div>
-      <h3 style="margin-bottom:8px;">Nothing found</h3>
-      <p style="color:var(--text-secondary);font-size:14px;">Try a different search or category</p>
-    </div>`;
-      } else {
-        Object.entries(grouped).forEach(([catName, catItems]) => {
-          itemsHtml += `<div class="menu-section"><div class="menu-section-title">${esc(catName)}</div>`;
-          catItems.forEach(item => {
-            const cartItem = State.cart.find(c => c.id == item.id);
-            const inCart = cartItem && cartItem.qty > 0;
-            itemsHtml += `
-         <div class="menu-item-card" id="menu-item-${item.id}">
-  ${item.image_url
-    ? `<img 
-        class="menu-item-img" 
-        src="${esc(item.image_url)}" 
-        alt="${esc(item.name)}" 
-        loading="lazy"
-        onerror="this.outerHTML='<div class=&quot;menu-item-img-placeholder&quot;>☕</div>'"
-      >`
-    : `<div class="menu-item-img-placeholder">☕</div>`}
-
-  <div class="menu-item-body">
-    <div class="menu-item-name">${esc(item.name)}</div>
-    <div class="menu-item-desc">${esc(item.description || '')}</div>
-
-    <div class="menu-item-footer">
-      <div class="menu-item-price">${fmt(item.price)}</div>
-
-      <div id="cart-ctrl-${item.id}">
-        ${inCart
-          ? `<div class="qty-control">
-              <button class="qty-btn" onclick="updateQty(${item.id},-1)">−</button>
-              <span class="qty-num">${cartItem.qty}</span>
-              <button class="qty-btn" onclick="updateQty(${item.id},1)">+</button>
-            </div>`
-          : `<div class="add-btn" onclick="addToCart(${item.id}, '${esc(item.name).replace(/'/g, "\\'")}', ${item.price}, '${esc(item.image_url || '')}')">+</div>`
-        }
-      </div>
+      // ---- On first load, render the full shell ----
+      const menuContent = document.getElementById('menu-content');
+      if (!document.getElementById('menu-search')) {
+        menuContent.innerHTML = `
+    <div class="search-bar-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-bar" placeholder="Search coffee, snacks..." id="menu-search">
     </div>
-  </div>
-</div>`;
-          });
-          itemsHtml += '</div>';
+    <div id="search-chips" class="search-chips"></div>
+    <div id="menu-type-tabs-wrap"></div>
+    <div id="cat-tabs-wrap"></div>
+    <div id="menu-results"></div>
+  `;
+        const searchInput = document.getElementById('menu-search');
+        searchInput.value = State.searchQuery;
+        searchInput.addEventListener('input', function() {
+          State.searchQuery = this.value;
+          State.menuPage = 1;
+          renderMenu();
         });
+        searchInput.addEventListener('blur', function() {
+          if (this.value.length >= 2) { addToSearchHistory(this.value); renderSearchChips(); }
+        });
+        renderSearchChips();
       }
 
-      // Combos
-      let combosHtml = '';
-      if (combos.length > 0 && !q && cat === 'all') {
-        combosHtml = `
-      <div class="menu-section">
-        <div class="menu-section-title">🎁 Combo Offers</div>
-        ${combos.map(combo => {
+      // Always update type tabs wrapper
+      const typeTabsWrap = document.getElementById('menu-type-tabs-wrap');
+      if (typeTabsWrap) typeTabsWrap.innerHTML = menuTypeTabsHtml;
+
+      // Always update category tabs wrapper
+      const catTabsWrap = document.getElementById('cat-tabs-wrap');
+      if (catTabsWrap) catTabsWrap.innerHTML = catTabsHtml;
+
+      // ---- Build results ----
+      const resultsEl = document.getElementById('menu-results');
+      if (!resultsEl) return;
+
+      if (tab === 'combos') {
+        // ---- COMBOS PAGE ----
+        if (!combos || combos.length === 0) {
+          resultsEl.innerHTML = `<div style="text-align:center;padding:48px 20px;">
+            <div style="font-size:48px;margin-bottom:12px;opacity:0.4">🎁</div>
+            <h3 style="margin-bottom:8px;">No combo offers right now</h3>
+            <p style="color:var(--text-secondary);font-size:14px;">Check back soon for great deals!</p>
+          </div>`;
+          return;
+        }
+
+        // Pagination for combos
+        const pageSize = State.menuPageSize;
+        const totalPages = Math.ceil(combos.length / pageSize);
+        const page = Math.min(State.menuPage, totalPages);
+        const start = (page - 1) * pageSize;
+        const pageItems = combos.slice(start, start + pageSize);
+
+        let combosHtml = `<div class="menu-section"><div class="menu-section-title">🎁 Combo Offers <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(${combos.length} deals)</span></div>`;
+        pageItems.forEach(combo => {
           const save = combo.original_price - combo.combo_price;
-          return `
+          combosHtml += `
           <div class="combo-card">
             ${combo.image_url ? `<img class="combo-card-img" src="${esc(combo.image_url)}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&q=80'">` : '<div class="combo-card-img" style="background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:40px;">🎁</div>'}
             <div class="combo-card-overlay">
@@ -6112,21 +6537,223 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
                 <span class="combo-price">${fmt(combo.combo_price)}</span>
                 <span class="combo-save">Save ${fmt(save)}</span>
               </div>
+              <div id="combo-cart-ctrl-${combo.id}" style="margin-top:10px;">
+                ${(()=>{ const cid='combo_'+combo.id; const ci=State.cart.find(c=>c.id===cid); return ci && ci.qty>0
+                  ? `<div class="qty-control" style="background:rgba(255,255,255,0.15);border-radius:20px;padding:2px 6px;">
+                      <button class="qty-btn" onclick="updateComboQty('${cid}',-1)" style="color:#fff;">−</button>
+                      <span class="qty-num" style="color:#fff;min-width:20px;text-align:center;">${ci.qty}</span>
+                      <button class="qty-btn" onclick="updateComboQty('${cid}',1)" style="color:#fff;">+</button>
+                    </div>`
+                  : `<button class="btn btn-primary" onclick="addComboToCart(${combo.id},'${esc(combo.name).replace(/'/g,"\\'")}',${combo.combo_price},'${esc(combo.image_url||'')}',this)" style="padding:8px 20px;font-size:13px;border-radius:20px;background:rgba(255,255,255,0.25);border:1.5px solid rgba(255,255,255,0.7);color:#fff;backdrop-filter:blur(4px);">🛒 Add to Cart</button>`
+                })()}
+              </div>
             </div>
           </div>`;
-        }).join('')}
-      </div>`;
+        });
+        combosHtml += '</div>';
+        combosHtml += buildPaginationHtml(page, totalPages);
+        resultsEl.innerHTML = combosHtml;
+        return;
       }
 
-      document.getElementById('menu-content').innerHTML = `
-    <div class="search-bar-wrap">
-      <span class="search-icon">🔍</span>
-      <input type="text" class="search-bar" placeholder="Search coffee, snacks..." value="${esc(State.searchQuery)}" oninput="searchMenu(this.value)" id="menu-search">
+      if (tab === 'drinks') {
+        // ---- DRINKS TAB ----
+        // Filter items whose category name matches known drink keywords
+        const drinkCatIds = categories
+          .filter(c => /drink|coffee|tea|cold|juice|shake|beverage|lassi|soda|smoothie/i.test(c.name))
+          .map(c => String(c.id));
+
+        let drinkItems = items.filter(item => {
+          const matchSearch = !q || item.name.toLowerCase().includes(q) || (item.description || '').toLowerCase().includes(q);
+          const matchDrink = drinkCatIds.includes(String(item.category_id));
+          return matchSearch && matchDrink;
+        });
+
+        if (drinkItems.length === 0) {
+          resultsEl.innerHTML = `<div style="text-align:center;padding:48px 20px;">
+            <div style="font-size:48px;margin-bottom:12px;opacity:0.4">🥤</div>
+            <h3 style="margin-bottom:8px;">No drinks available right now</h3>
+            <p style="color:var(--text-secondary);font-size:14px;">Check back soon for refreshing options!</p>
+          </div>`;
+          return;
+        }
+
+        // Pagination
+        const drinkPageSize = State.menuPageSize;
+        const drinkTotalPages = Math.ceil(drinkItems.length / drinkPageSize);
+        const drinkPage = Math.min(State.menuPage, Math.max(1, drinkTotalPages));
+        const drinkStart = (drinkPage - 1) * drinkPageSize;
+        const drinkPageItems = drinkItems.slice(drinkStart, drinkStart + drinkPageSize);
+
+        // Group by category
+        const drinkGrouped = {};
+        drinkPageItems.forEach(item => {
+          const cname = item.category_name || 'Drinks';
+          if (!drinkGrouped[cname]) drinkGrouped[cname] = [];
+          drinkGrouped[cname].push(item);
+        });
+
+        let drinksHtml = '';
+        Object.entries(drinkGrouped).forEach(([catName, catItems]) => {
+          drinksHtml += `<div class="menu-section"><div class="menu-section-title">${esc(catName)}</div>`;
+          catItems.forEach(item => {
+            const cartItem = State.cart.find(c => c.id == item.id);
+            const inCart = cartItem && cartItem.qty > 0;
+            drinksHtml += `
+       <div class="menu-item-card" id="menu-item-${item.id}">
+${item.image_url
+  ? `<img
+      class="menu-item-img"
+      src="${esc(item.image_url)}"
+      alt="${esc(item.name)}"
+      loading="lazy"
+      onerror="this.outerHTML='<div class=&quot;menu-item-img-placeholder&quot;>🥤</div>'"
+    >`
+  : `<div class="menu-item-img-placeholder">🥤</div>`}
+<div class="menu-item-body">
+  <div class="menu-item-name">${esc(item.name)}</div>
+  <div class="menu-item-desc">${esc(item.description || '')}</div>
+  <div class="menu-item-footer">
+    <div class="menu-item-price">${fmt(item.price)}</div>
+    <div id="cart-ctrl-${item.id}">
+      ${inCart
+        ? `<div class="qty-control">
+            <button class="qty-btn" onclick="updateQty(${item.id},-1)">−</button>
+            <span class="qty-num">${cartItem.qty}</span>
+            <button class="qty-btn" onclick="updateQty(${item.id},1)">+</button>
+          </div>`
+        : `<div class="add-btn" onclick="addToCart(${item.id}, '${esc(item.name).replace(/'/g, "\'")}', ${item.price}, '${esc(item.image_url || '')}', this)" oncontextmenu="event.preventDefault();openCustomiseModal(${item.id},'${esc(item.name).replace(/'/g,"\'")}',${item.price},'${esc(item.image_url||'')}')">+</div>`
+      }
     </div>
-    ${catTabsHtml}
-    ${combosHtml}
-    ${itemsHtml}
-  `;
+  </div>
+</div>
+</div>`;
+          });
+          drinksHtml += '</div>';
+        });
+
+        const drinkShowFrom = drinkStart + 1;
+        const drinkShowTo = Math.min(drinkStart + drinkPageSize, drinkItems.length);
+        const drinkPageInfo = `<div style="text-align:center;font-size:12px;color:var(--text-muted);padding:8px 0 0;">Showing ${drinkShowFrom}–${drinkShowTo} of ${drinkItems.length} drinks</div>`;
+        resultsEl.innerHTML = drinksHtml + drinkPageInfo + buildPaginationHtml(drinkPage, drinkTotalPages);
+        return;
+      }
+
+      // ---- DISHES TAB ----
+      let filteredItems = items.filter(item => {
+        const matchSearch = !q || item.name.toLowerCase().includes(q) || (item.description || '').toLowerCase().includes(q);
+        const matchCat = cat === 'all' || item.category_id == cat;
+        return matchSearch && matchCat;
+      });
+
+      if (filteredItems.length === 0) {
+        resultsEl.innerHTML = `<div style="text-align:center;padding:48px 20px;">
+      <div style="font-size:48px;margin-bottom:12px;opacity:0.4">🔍</div>
+      <h3 style="margin-bottom:8px;">Nothing found</h3>
+      <p style="color:var(--text-secondary);font-size:14px;">Try a different search or category</p>
+    </div>`;
+        return;
+      }
+
+      // Pagination
+      const pageSize = State.menuPageSize;
+      const totalPages = Math.ceil(filteredItems.length / pageSize);
+      const page = Math.min(State.menuPage, Math.max(1, totalPages));
+      const start = (page - 1) * pageSize;
+      const pageItems = filteredItems.slice(start, start + pageSize);
+
+      // Group paged items by category
+      const grouped = {};
+      pageItems.forEach(item => {
+        const cname = item.category_name || 'Other';
+        if (!grouped[cname]) grouped[cname] = [];
+        grouped[cname].push(item);
+      });
+
+      let itemsHtml = '';
+      Object.entries(grouped).forEach(([catName, catItems]) => {
+        itemsHtml += `<div class="menu-section"><div class="menu-section-title">${esc(catName)}</div>`;
+        catItems.forEach(item => {
+          const cartItem = State.cart.find(c => c.id == item.id);
+          const inCart = cartItem && cartItem.qty > 0;
+          itemsHtml += `
+       <div class="menu-item-card" id="menu-item-${item.id}">
+${item.image_url
+  ? `<img 
+      class="menu-item-img" 
+      src="${esc(item.image_url)}" 
+      alt="${esc(item.name)}" 
+      loading="lazy"
+      onerror="this.outerHTML='<div class=&quot;menu-item-img-placeholder&quot;>☕</div>'"
+    >`
+  : `<div class="menu-item-img-placeholder">☕</div>`}
+
+<div class="menu-item-body">
+  <div class="menu-item-name">${esc(item.name)}</div>
+  <div class="menu-item-desc">${esc(item.description || '')}</div>
+
+  <div class="menu-item-footer">
+    <div class="menu-item-price">${fmt(item.price)}</div>
+
+    <div id="cart-ctrl-${item.id}">
+      ${inCart
+        ? `<div class="qty-control">
+            <button class="qty-btn" onclick="updateQty(${item.id},-1)">−</button>
+            <span class="qty-num">${cartItem.qty}</span>
+            <button class="qty-btn" onclick="updateQty(${item.id},1)">+</button>
+          </div>`
+        : `<div class="add-btn" onclick="addToCart(${item.id}, '${esc(item.name).replace(/'/g, "\\'")}', ${item.price}, '${esc(item.image_url || '')}', this)" oncontextmenu="event.preventDefault();openCustomiseModal(${item.id},'${esc(item.name).replace(/'/g,"\\'")}',${item.price},'${esc(item.image_url||'')}')">+</div>`
+      }
+    </div>
+  </div>
+</div>
+</div>`;
+        });
+        itemsHtml += '</div>';
+      });
+
+      // Page info + pagination controls
+      const showingFrom = start + 1;
+      const showingTo = Math.min(start + pageSize, filteredItems.length);
+      const pageInfoHtml = `<div style="text-align:center;font-size:12px;color:var(--text-muted);padding:8px 0 0;">Showing ${showingFrom}–${showingTo} of ${filteredItems.length} items</div>`;
+
+      resultsEl.innerHTML = itemsHtml + pageInfoHtml + buildPaginationHtml(page, totalPages);
+    }
+
+    function buildPaginationHtml(page, totalPages) {
+      if (totalPages <= 1) return '';
+      let html = '<div class="pagination">';
+      // Prev button
+      html += `<button class="page-btn" onclick="goMenuPage(${page-1})" ${page===1?'disabled':''}>‹</button>`;
+      // Page numbers — show at most 5 around current
+      const range = [];
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) range.push(i);
+        else if (range[range.length-1] !== '…') range.push('…');
+      }
+      range.forEach(r => {
+        if (r === '…') {
+          html += `<span class="page-info">…</span>`;
+        } else {
+          html += `<button class="page-btn ${r===page?'active':''}" onclick="goMenuPage(${r})">${r}</button>`;
+        }
+      });
+      // Next button
+      html += `<button class="page-btn" onclick="goMenuPage(${page+1})" ${page===totalPages?'disabled':''}>›</button>`;
+      html += '</div>';
+      return html;
+    }
+
+    function goMenuPage(page) {
+      State.menuPage = page;
+      renderMenu();
+      document.getElementById('page-menu').scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function switchMenuTab(tab) {
+      State.menuTab = tab;
+      State.menuPage = 1;
+      renderMenu();
     }
 
     function searchMenu(q) {
@@ -6148,7 +6775,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
     // ============================================================
     // CART
     // ============================================================
-    function addToCart(id, name, price, image) {
+    function _origAddToCart(id, name, price, image) {
       const existing = State.cart.find(c => c.id == id);
       if (existing) {
         existing.qty++;
@@ -6172,6 +6799,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
     }
 
     function updateQty(id, delta) {
+      haptic(6);
       const item = State.cart.find(c => c.id == id);
       if (!item) return;
       item.qty += delta;
@@ -6230,15 +6858,37 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
         return;
       }
 
-      const totalAfterDiscount = Math.max(0, subtotal - State.couponDiscount - State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE);
+      const totalAfterDiscount = Math.max(0, subtotal - State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE);
 
       document.getElementById('cart-content').innerHTML = `
     <div class="section-title">Your Cart</div>
 
-    <div class="order-type-toggle">
-      <button class="order-type-btn ${State.orderType==='dine-in'?'active':''}" onclick="setOrderType('dine-in')">🍽️ Dine-In</button>
-      <button class="order-type-btn ${State.orderType==='pickup'?'active':''}" onclick="setOrderType('pickup')">🥡 Pickup</button>
+    <div class="card mb-16">
+      <div class="card-pad">
+        <div class="section-title" style="font-size:14px;margin-bottom:12px;">🍽️ Order Type</div>
+        <div class="order-type-toggle">
+          <button class="order-type-btn ${State.orderType==='dine-in'?'active':''}" onclick="setOrderType('dine-in')">🪑 Dine In</button>
+          <button class="order-type-btn ${State.orderType==='home-delivery'?'active':''}" onclick="setOrderType('home-delivery')">🏠 Delivery</button>
+        </div>
+      </div>
     </div>
+
+    ${State.orderType === 'dine-in' ? `
+    <div class="form-group" style="margin-bottom:16px;background:linear-gradient(135deg,rgba(255,180,0,0.13),rgba(255,100,0,0.10));border:2.5px solid var(--primary);border-radius:var(--radius);padding:14px 14px 10px;box-shadow:0 2px 12px rgba(255,140,0,0.18);">
+      <label class="form-label" style="font-size:15px;font-weight:800;color:var(--primary);letter-spacing:0.3px;">🪑 Table Number <span style="color:#e53935;font-size:13px;">(Required)</span></label>
+      <div class="form-input-icon">
+        <span class="icon">🪑</span>
+        <input type="number" class="form-input" id="order-table-number" placeholder="Enter your table number" min="1" value="${State.tableNumber||''}" style="font-size:17px;font-weight:700;border:2px solid var(--primary);background:var(--bg-card);">
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;text-align:center;">⚠️ Please enter the number shown on your table</div>
+    </div>` : ''}
+
+    ${State.orderType === 'home-delivery' ? `
+    <div class="form-group" style="margin-bottom:16px;background:linear-gradient(135deg,rgba(34,197,94,0.10),rgba(16,185,129,0.08));border:2.5px solid var(--success);border-radius:var(--radius);padding:14px 14px 10px;box-shadow:0 2px 12px rgba(34,197,94,0.15);">
+      <label class="form-label" style="font-size:15px;font-weight:800;color:var(--success);letter-spacing:0.3px;">🏠 Delivery Address <span style="color:#e53935;font-size:13px;">(Required)</span></label>
+      <textarea class="form-input" id="order-delivery-address" rows="3" placeholder="Enter your full delivery address&#10;e.g. Flat 4B, Rose Apartments, MG Road, Indore — 452001" style="font-size:14px;font-weight:500;border:2px solid var(--success);background:var(--bg-card);resize:none;line-height:1.5;">${State.deliveryAddress||''}</textarea>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;text-align:center;">📍 We deliver within 5 km · Estimated time: 30–45 mins</div>
+    </div>` : ''}
 
     <div class="card mb-16">
       <div class="card-header">
@@ -6247,43 +6897,34 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       </div>
       <div class="card-pad" style="padding-top:4px;padding-bottom:4px;">
         ${cart.map(item => `
-          <div class="cart-item">
-            ${item.image ? `<img class="cart-item-img" src="${esc(item.image)}" onerror="this.style.display='none'">` : '<div class="cart-item-img" style="background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:20px;">☕</div>'}
-            <div class="cart-item-info">
-              <div class="cart-item-name">${esc(item.name)}</div>
-              <div class="cart-item-price">${fmt(item.price)} × ${item.qty} = ${fmt(item.price*item.qty)}</div>
+          <div class="cart-item-wrap">
+            <div class="cart-item-delete-bg">🗑️</div>
+            <div class="cart-item-swipeable cart-item" data-item-id="${item.id}">
+              ${item.image ? `<img class="cart-item-img" src="${esc(item.image)}" onerror="this.style.display='none'">` : `<div class="cart-item-img" style="background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:20px;">${item.isCombo ? '🎁' : '☕'}</div>`}
+              <div class="cart-item-info">
+                <div class="cart-item-name">${esc(item.name)}</div>
+                <div class="cart-item-price">${fmt(item.price)} × ${item.qty} = ${fmt(item.price*item.qty)}</div>
+              </div>
+              <div class="qty-control">
+                <button class="qty-btn" onclick="${item.isCombo ? `updateComboQty('${item.id}',-1)` : `updateQty(${item.id},-1)`}">−</button>
+                <span class="qty-num">${item.qty}</span>
+                <button class="qty-btn" onclick="${item.isCombo ? `updateComboQty('${item.id}',1)` : `updateQty(${item.id},1)`}">+</button>
+              </div>
             </div>
-            <div class="qty-control">
-              <button class="qty-btn" onclick="updateQty(${item.id},-1)">−</button>
-              <span class="qty-num">${item.qty}</span>
-              <button class="qty-btn" onclick="updateQty(${item.id},1)">+</button>
-            </div>
-            <span class="cart-item-remove" onclick="removeFromCart(${item.id})">🗑️</span>
           </div>`).join('')}
-      </div>
-    </div>
-
-    <div class="card mb-16">
-      <div class="card-pad">
-        <div class="section-title" style="font-size:14px;margin-bottom:12px;">Apply Coupon</div>
-        <div class="coupon-row">
-          <input type="text" class="form-input" id="coupon-input" placeholder="Enter coupon code" value="${esc(State.couponCode)}" style="text-transform:uppercase;">
-          <button class="btn btn-outline" style="width:auto;padding:11px 18px;" onclick="applyCoupon()">Apply</button>
-        </div>
-        ${State.couponDiscount > 0 ? `<div style="color:var(--success);font-size:13px;margin-top:6px;">✅ Coupon applied! You save ${fmt(State.couponDiscount)}</div>` : ''}
       </div>
     </div>
 
     ${pointsLoading ? `
     <div class="card mb-16">
       <div class="card-pad" style="text-align:center;padding:18px;">
-        <div style="font-size:13px;color:var(--text-secondary);">🪙 Loading your BrewCoins...</div>
+        <div style="font-size:13px;color:var(--text-secondary);">🪙 Loading your C3 Coins...</div>
       </div>
     </div>` : maxPointsDiscount > 0 ? `
     <div class="card mb-16">
       <div class="card-pad">
         <div>
-          <div class="section-title" style="font-size:14px;margin-bottom:0;">🪙 Use BrewCoins</div>
+          <div class="section-title" style="font-size:14px;margin-bottom:0;">🪙 Use C3 Coins</div>
           <span style="font-size:13px;color:var(--text-secondary);">${availablePoints} coins available · Max ${LOYALTY.MAX_REDEEM_PERCENT}% of order</span>
         </div>
         <div class="points-slider-wrap">
@@ -6292,7 +6933,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
             <span>Using: <strong>${State.pointsToUse} coins (${fmt(State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE)})</strong></span>
             <span style="color:var(--text-muted)">Max: ${maxPointsDiscount} coins</span>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">40 BrewCoins = ₹1 discount</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">40 C3 Coins = ₹1 discount</div>
         </div>
       </div>
     </div>` : ''}
@@ -6301,10 +6942,9 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       <div class="card-pad">
         <div class="section-title" style="font-size:14px;margin-bottom:12px;">Order Summary</div>
         <div class="order-summary-row"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
-        ${State.couponDiscount > 0 ? `<div class="order-summary-row discount"><span>Coupon Discount</span><span>-${fmt(State.couponDiscount)}</span></div>` : ''}
-        ${State.pointsToUse > 0 ? `<div class="order-summary-row points"><span>BrewCoins (${State.pointsToUse} coins)</span><span>-${fmt(State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE)}</span></div>` : ''}
+        ${State.pointsToUse > 0 ? `<div class="order-summary-row points"><span>C3 Coins (${State.pointsToUse} coins)</span><span>-${fmt(State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE)}</span></div>` : ''}
         <div class="order-summary-row total"><span>Total</span><span>${fmt(totalAfterDiscount)}</span></div>
-        <div style="font-size:12px;color:var(--success);margin-top:8px;">🪙 You'll earn ~${Math.floor(totalAfterDiscount)} BrewCoins on this order</div>
+        <div style="font-size:12px;color:var(--success);margin-top:8px;">🪙 You'll earn ~${Math.floor(totalAfterDiscount)} C3 Coins on this order</div>
       </div>
     </div>
 
@@ -6321,41 +6961,17 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
     </button>
     ${!State.isLoggedIn ? `
     <div style="margin-top:14px;background:var(--bg-secondary);border-radius:var(--radius);padding:14px;text-align:center;border:1.5px dashed var(--primary-light);">
-      <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:4px;">🪙 Earn BrewCoins on this order!</div>
-      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">Sign up free — get 200 welcome coins + earn on this order</div>
-      <button class="btn btn-primary" style="padding:10px 20px;width:auto;" onclick="openAuthModal('signup')">Join & Earn Coins</button>
+      <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:4px;">🪙 Earn C3 Coins on this order!</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">Sign up free — get 100 welcome coins + earn on this order</div>
+      <button class="btn btn-primary" style="padding:10px 20px;width:auto;" onclick="openAuthModal('signup','cart','placeOrder')">Join & Earn Coins</button>
     </div>` : ''}
-    <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--text-muted);">🏪 ${State.orderType === 'dine-in' ? 'Dine-In' : 'Pickup'} · No delivery</div>
   `;
     }
 
     function setOrderType(type) {
       State.orderType = type;
       renderCart();
-    }
-
-    async function applyCoupon() {
-      const code = document.getElementById('coupon-input').value.trim().toUpperCase();
-      if (!code) {
-        toast('Enter a coupon code', 'warning');
-        return;
-      }
-      const subtotal = getCartTotal();
-      const res = await api('validate_coupon', {
-        code,
-        amount: subtotal
-      });
-      if (res.success) {
-        State.couponCode = code;
-        State.couponDiscount = res.discount;
-        toast(`✅ ${res.description}`, 'success');
-        renderCart();
-      } else {
-        State.couponCode = '';
-        State.couponDiscount = 0;
-        toast(res.message || 'Invalid coupon', 'error');
-        renderCart();
-      }
+      setTimeout(initSwipeDelete, 50);
     }
 
     function updatePointsUse(val) {
@@ -6363,12 +6979,12 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       const discRow = document.querySelector('.order-summary-row.points');
       const totalRow = document.querySelector('.order-summary-row.total span:last-child');
       const subtotal = getCartTotal();
-      const total = Math.max(0, subtotal - State.couponDiscount - State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE);
+      const total = Math.max(0, subtotal - State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE);
       if (totalRow) totalRow.textContent = fmt(total);
       const ptslabel = document.querySelector('.points-slider-wrap strong');
       if (ptslabel) ptslabel.textContent = `${State.pointsToUse} coins (${fmt(State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE)})`;
       if (discRow) discRow.querySelector('span:last-child').textContent = `-${fmt(State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE)}`;
-      if (discRow) discRow.querySelector('span:first-child').textContent = `BrewCoins (${State.pointsToUse} coins)`;
+      if (discRow) discRow.querySelector('span:first-child').textContent = `C3 Coins (${State.pointsToUse} coins)`;
     }
 
     async function placeOrder() {
@@ -6377,11 +6993,31 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
         return;
       }
       if (!State.isLoggedIn) {
-        openAuthModal('signup');
-        toast('Please sign in to place your order 🎁', 'info');
+        openAuthModal('login', 'cart', 'placeOrder');
+        toast('Please sign in to place your order — your cart is saved! 🛒', 'info');
         return;
       }
       const notes = document.getElementById('order-notes')?.value || '';
+      let orderMeta = '';
+
+      if (State.orderType === 'dine-in') {
+        const tableNumber = document.getElementById('order-table-number')?.value || '';
+        if (!tableNumber) {
+          toast('Please enter your table number', 'warning');
+          return;
+        }
+        State.tableNumber = tableNumber;
+        orderMeta = `Table ${tableNumber}`;
+      } else if (State.orderType === 'home-delivery') {
+        const deliveryAddress = document.getElementById('order-delivery-address')?.value?.trim() || '';
+        if (!deliveryAddress) {
+          toast('Please enter your delivery address', 'warning');
+          return;
+        }
+        State.deliveryAddress = deliveryAddress;
+        orderMeta = `Delivery to: ${deliveryAddress}`;
+      }
+
       const items = State.cart.map(i => ({
         id: i.id,
         name: i.name,
@@ -6390,15 +7026,21 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       }));
       const res = await api('place_order', {
         items,
-        coupon: State.couponCode,
         points_use: State.pointsToUse,
         order_type: State.orderType,
-        notes
+        notes: `${orderMeta}${notes ? ' | ' + notes : ''}`
       });
       if (res.success) {
+        // Auto-send WhatsApp notification to restaurant
+        (function() {
+          const subtotalWa = getCartTotal();
+          const totalWa = Math.max(0, subtotalWa - State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE);
+          const itemsTextWa = items.map(i => `• ${i.name} x${i.qty} = ${fmt(i.price*i.qty)}`).join('\n');
+          const deliveryLine = State.orderType === 'home-delivery' ? `*Delivery Address:* ${State.deliveryAddress}\n` : `*Table:* ${State.tableNumber||'N/A'}\n`;
+          const waMsg = `🛒 *New Order #${res.order_number} - C3 Restaurant*\n\n${itemsTextWa}\n\n*Subtotal:* ${fmt(subtotalWa)}\n${State.pointsToUse>0?`*C3 Coins (${State.pointsToUse}):* -${fmt(State.pointsToUse/LOYALTY.POINTS_REDEEM_RATE)}\n`:''}*Total:* ${fmt(totalWa)}\n\n${deliveryLine}${notes?`*Notes:* ${notes}`:''}`;
+          window.open(`https://wa.me/919202420684?text=${encodeURIComponent(waMsg)}`, '_blank');
+        })();
         State.cart = [];
-        State.couponCode = '';
-        State.couponDiscount = 0;
         State.pointsToUse = 0;
         saveCart();
         updateCartBadge();
@@ -6412,15 +7054,24 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
 
     function placeOrderWhatsapp() {
       const subtotal = getCartTotal();
-      const total = Math.max(0, subtotal - State.couponDiscount - State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE);
+      const total = Math.max(0, subtotal - State.pointsToUse / LOYALTY.POINTS_REDEEM_RATE);
       const items = State.cart.map(i => `• ${i.name} x${i.qty} = ${fmt(i.price*i.qty)}`).join('\n');
       const notes = document.getElementById('order-notes')?.value || '';
-      const msg = `🛒 *New Order - C3 Restaurant*\n\n${items}\n\n*Subtotal:* ${fmt(subtotal)}\n${State.couponDiscount>0?`*Coupon:* -${fmt(State.couponDiscount)}\n`:''}${State.pointsToUse>0?`*BrewCoins (${State.pointsToUse}):* -${fmt(State.pointsToUse/LOYALTY.POINTS_REDEEM_RATE)}\n`:''}*Total:* ${fmt(total)}\n\n*Type:* ${State.orderType}\n${notes?`*Notes:* ${notes}`:''}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+      const tableNumber = document.getElementById('order-table-number')?.value || '';
+      const deliveryAddress = document.getElementById('order-delivery-address')?.value?.trim() || '';
+      const deliveryLine = State.orderType === 'home-delivery'
+        ? `*Delivery Address:* ${deliveryAddress||'(not provided)'}\n`
+        : `*Table:* ${tableNumber||'N/A'}\n`;
+      const msg = `🛒 *New Order - C3 Restaurant*\n\n${items}\n\n*Subtotal:* ${fmt(subtotal)}\n${State.pointsToUse>0?`*C3 Coins (${State.pointsToUse}):* -${fmt(State.pointsToUse/LOYALTY.POINTS_REDEEM_RATE)}\n`:''}*Total:* ${fmt(total)}\n\n${deliveryLine}${notes?`*Notes:* ${notes}`:''}`;
+      window.open(`https://wa.me/919202420684?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
-    function showOrderSuccessModal(orderNum, pointsEarned, total) {
+    function showOrderSuccessModal(orderNum, pointsEarned, total, orderType) {
+      SFX.success();
+      haptic([50, 30, 80, 30, 100]);
       triggerConfetti();
+      // Start countdown timer on main screen
+      startOrderCountdown(orderNum, orderType || State.orderType || 'dine-in');
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay centered';
       overlay.innerHTML = `
@@ -6431,13 +7082,17 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       <div style="background:var(--bg-secondary);border-radius:var(--radius-sm);padding:16px;margin-bottom:20px;">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Order Number</div>
         <div style="font-size:22px;font-weight:800;letter-spacing:2px;color:var(--primary)">#${orderNum}</div>
-        <div style="font-size:13px;color:var(--success);margin-top:8px;">🪙 +${pointsEarned} BrewCoins earned!</div>
+        <div style="font-size:13px;color:var(--success);margin-top:8px;">🪙 +${pointsEarned} C3 Coins earned!</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Worth ₹${(pointsEarned/20).toFixed(2)} towards your next order</div>
         <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">Total: ${fmt(total)}</div>
       </div>
       <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove();goToPage('home')">Back to Home 🏠</button>
     </div>`;
       document.body.appendChild(overlay);
+      // Float points near coin chip
+      setTimeout(() => {
+        if (pointsEarned > 0) floatPoints(pointsEarned, document.querySelector('.points-chip'));
+      }, 600);
     }
 
     // ============================================================
@@ -6526,14 +7181,14 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
 
       document.getElementById('loyalty-content').innerHTML = `
     <div class="loyalty-hero">
-      <div style="font-size:14px;opacity:0.85;margin-bottom:4px;">🪙 Your BrewCoin Balance</div>
+      <div style="font-size:14px;opacity:0.85;margin-bottom:4px;">🪙 Your C3 Coin Balance</div>
       <div class="loyalty-points-big" id="loyalty-pts-display">${c.points}</div>
       <div class="loyalty-label">= Worth ₹${pointsRupeeValue} in discounts</div>
       <div class="tier-info">
         <div class="tier-badge">${getMemberIcon(c.membership_level)} ${c.membership_level} Member</div>
         ${nextTier ? `<div class="tier-badge">🎯 ${nextLevelPts - c.points} pts to ${nextTierName}</div>` : '<div class="tier-badge">💎 Max Tier Achieved!</div>'}
       </div>
-      <div style="font-size:12px;opacity:0.7;margin-top:8px;">40 BrewCoins = ₹1 · Max ${LOYALTY.MAX_REDEEM_PERCENT}% off per order</div>
+      <div style="font-size:12px;opacity:0.7;margin-top:8px;">40 C3 Coins = ₹1 · Max ${LOYALTY.MAX_REDEEM_PERCENT}% off per order</div>
     </div>
 
     <div class="section-title">🏆 Redeem Rewards</div>
@@ -6544,14 +7199,6 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       <div class="card-pad" style="padding-top:4px;padding-bottom:4px;">
         ${tiersHtml}
       </div>
-    </div>
-
-    <div class="section-title mt-20">👥 Referral Reward</div>
-    <div class="referral-card">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:4px;">Your referral code</div>
-      <div class="referral-code">${esc(c.referral_code)}</div>
-      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Share with friends — both of you earn <strong>300 BrewCoins</strong>!</div>
-      <button class="btn btn-outline btn-sm" style="width:auto;" onclick="copyReferral('${esc(c.referral_code)}')">📋 Copy Code</button>
     </div>
 
     <div class="section-title mt-20">💳 Point History</div>
@@ -6596,7 +7243,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       });
       if (res.success) {
         overlay.remove();
-        toast(`🎉 Reward redeemed! Use coupon: ${res.coupon}`, 'success', 5000);
+        toast(`🎉 Reward redeemed! ${res.reward.name} unlocked`, 'success', 4000);
         State.dashboardLoaded = false;
         State.loyaltyLoaded = false;
       } else {
@@ -6668,7 +7315,7 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       <div class="card-pad" style="padding-top:4px;padding-bottom:4px;">
         <div class="setting-row" onclick="goToPage('loyalty')">
           <div class="setting-icon">⭐</div>
-          <div class="setting-label">Saved Rewards & Coupons</div>
+          <div class="setting-label">Saved Rewards</div>
           <div class="setting-arrow">›</div>
         </div>
         <div class="setting-row" style="cursor:default;">
@@ -6679,34 +7326,25 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
             <span class="toggle-knob"></span>
           </label>
         </div>
-        <div class="setting-row" onclick="copyReferral('${esc(c.referral_code)}')">
-          <div class="setting-icon">👥</div>
-          <div class="setting-label">Referral Code: <strong>${esc(c.referral_code)}</strong></div>
-          <div class="setting-arrow">📋</div>
-        </div>
-        <div class="setting-row" onclick="copyReferralLink('${esc(c.referral_code)}')">
-          <div class="setting-icon">🔗</div>
-          <div class="setting-label">Copy Referral Link</div>
-          <div class="setting-arrow">📤</div>
-        </div>
       </div>
     </div>
 
     <button class="btn btn-danger w-full" onclick="confirmLogout()">🚪 Sign Out</button>
 
-    <div class="card mt-16 mb-16">
-      <div class="card-pad">
-        <div class="card-title" style="margin-bottom:10px;">📷 Café Instagram Link</div>
-        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">Editable from admin panel — shown as floating button on menu</div>
-        <div class="ig-admin-row">
-          <input type="url" class="form-input" id="ig-url-input" value="${esc(State.instagramUrl)}" placeholder="https://instagram.com/...">
-          <button class="btn btn-outline btn-sm" style="width:auto;padding:11px 16px;" onclick="adminUpdateInstagram(document.getElementById('ig-url-input').value.trim())">Save</button>
-        </div>
-      </div>
+    <div style="text-align:center;margin:24px 0 8px;padding:16px;border-radius:var(--radius);background:var(--bg-secondary);border:1px solid var(--border);">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;letter-spacing:0.5px;text-transform:uppercase;">Powered by</div>
+      <a href="https://nexora-scale.unaux.com/qrcode.html?i=1" target="_blank" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+        <span style="font-size:15px;">💻</span>
+        <span style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-0.3px;">Nexora <span style="color:#25D366;">Scale</span></span>
+        <span style="font-size:11px;color:var(--text-secondary);">Ujjain</span>
+      </a>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Digital solutions for modern businesses</div>
     </div>
-
-    <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--text-muted);">C3 Restaurant · Made with ☕ & ❤️</div>
   `;
+      // Add milestones after render
+      const milestoneHtml = renderMilestones(c, State.dashboard ? State.dashboard.recent_orders : []);
+      const signOutBtn = document.querySelector('#page-profile .btn-danger');
+      if (signOutBtn) signOutBtn.insertAdjacentHTML('afterend', milestoneHtml);
     }
 
     function renderOrderHistory(orders) {
@@ -6714,16 +7352,23 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       return orders.map(o => {
         const items = JSON.parse(o.items_json || '[]');
         const itemNames = items.slice(0, 2).map(i => i.name).join(', ') + (items.length > 2 ? ' +more' : '');
+        const isActive = ['pending','confirmed','preparing','ready'].includes(o.status);
+        const dotClass = o.status === 'completed' ? 'green' : o.status === 'cancelled' ? 'red' : '';
+        const itemsJson = esc(JSON.stringify(items)).replace(/'/g, "&#39;");
         return `
       <div class="order-item">
         <div class="order-icon">🧾</div>
         <div class="order-info">
           <div class="order-num">#${esc(o.order_number)}</div>
           <div class="order-date">${esc(itemNames)} · ${timeAgo(o.created_at)}</div>
+          ${o.status !== 'completed' && o.status !== 'cancelled' ? `<span class="wait-badge">⏱ ~15 min</span>` : ''}
         </div>
         <div class="order-right">
           <div class="order-total">${fmt(o.total)}</div>
-          <div class="order-status status-${o.status}">${o.status}</div>
+          <div class="order-status status-${o.status}">
+            ${isActive ? `<span class="status-pulse"><span class="status-pulse-dot ${dotClass}"></span></span> ` : ''}${o.status}
+          </div>
+          ${o.status === 'completed' ? `<div class="reorder-btn mt-4" onclick="reorder('${itemsJson}')">↺ Reorder</div>` : ''}
         </div>
       </div>`;
       }).join('');
@@ -6880,8 +7525,651 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
     }
 
     // ============================================================
+    // HAPTIC FEEDBACK
+    // ============================================================
+    function haptic(ms = 10) {
+      if (navigator.vibrate) navigator.vibrate(ms);
+    }
+
+    // ============================================================
+    // CART FLY ANIMATION
+    // ============================================================
+    function flyToCart(sourceEl) {
+      const cartBtn = document.getElementById('cart-nav-btn') || document.getElementById('cart-nav-btn-mobile');
+      if (!sourceEl || !cartBtn) return;
+      const src = sourceEl.getBoundingClientRect();
+      const dst = cartBtn.getBoundingClientRect();
+      const dot = document.createElement('div');
+      dot.className = 'cart-fly-dot';
+      dot.style.left = (src.left + src.width/2 - 10) + 'px';
+      dot.style.top  = (src.top  + src.height/2 - 10) + 'px';
+      const dx = dst.left - src.left, dy = dst.top - src.top;
+      dot.style.setProperty('--fly-x',  (dx * 0.4) + 'px');
+      dot.style.setProperty('--fly-y',  (dy * 0.4) + 'px');
+      dot.style.setProperty('--fly-x2', dx + 'px');
+      dot.style.setProperty('--fly-y2', dy + 'px');
+      document.body.appendChild(dot);
+      setTimeout(() => dot.remove(), 600);
+    }
+
+    function addToCart(id, name, price, image, sourceEl) {
+      haptic(8);
+      SFX.pop();
+      if (sourceEl) { flyToCart(sourceEl); triggerMiniConfetti(sourceEl); }
+      _origAddToCart(id, name, price, image);
+      popCartBadge();
+    }
+
+    // ============================================================
+    // COMBO CART HELPERS
+    // ============================================================
+    function addComboToCart(comboId, name, price, image, sourceEl) {
+      haptic(8);
+      SFX.pop();
+      if (sourceEl) { flyToCart(sourceEl); triggerMiniConfetti(sourceEl); }
+      const cid = 'combo_' + comboId;
+      const existing = State.cart.find(c => c.id === cid);
+      if (existing) {
+        existing.qty++;
+      } else {
+        State.cart.push({ id: cid, name, price: parseFloat(price), image, qty: 1, isCombo: true });
+        if (!State.isLoggedIn && !State.rewardsPopupDismissed) showRewardsPopup();
+      }
+      saveCart();
+      updateCartBadge();
+      updateComboCartCtrl(comboId);
+      popCartBadge();
+      toast(`${name} added to cart 🎁`, 'success', 1800);
+    }
+
+    function updateComboQty(cid, delta) {
+      haptic(6);
+      const item = State.cart.find(c => c.id === cid);
+      if (!item) return;
+      item.qty += delta;
+      if (item.qty <= 0) State.cart = State.cart.filter(c => c.id !== cid);
+      saveCart();
+      updateCartBadge();
+      const numericId = parseInt(cid.replace('combo_', ''));
+      updateComboCartCtrl(numericId);
+      if (State.currentPage === 'cart') renderCart();
+    }
+
+    function updateComboCartCtrl(comboId) {
+      const ctrl = document.getElementById('combo-cart-ctrl-' + comboId);
+      if (!ctrl) return;
+      const cid = 'combo_' + comboId;
+      const ci = State.cart.find(c => c.id === cid);
+      const combo = State.menu && State.menu.combos ? State.menu.combos.find(c => c.id == comboId) : null;
+      if (ci && ci.qty > 0) {
+        ctrl.innerHTML = `<div class="qty-control" style="background:rgba(255,255,255,0.15);border-radius:20px;padding:2px 6px;">
+          <button class="qty-btn" onclick="updateComboQty('${cid}',-1)" style="color:#fff;">&#8722;</button>
+          <span class="qty-num" style="color:#fff;min-width:20px;text-align:center;">${ci.qty}</span>
+          <button class="qty-btn" onclick="updateComboQty('${cid}',1)" style="color:#fff;">+</button>
+        </div>`;
+      } else {
+        const imgUrl = combo ? (combo.image_url || '').replace(/'/g,"\\'") : '';
+        const comboPrice = combo ? combo.combo_price : 0;
+        const comboName = combo ? combo.name.replace(/'/g,"\\'").replace(/"/g,'&quot;') : '';
+        ctrl.innerHTML = `<button class="btn btn-primary" onclick="addComboToCart(${comboId},'${comboName}',${comboPrice},'${imgUrl}',this)" style="padding:8px 20px;font-size:13px;border-radius:20px;background:rgba(255,255,255,0.25);border:1.5px solid rgba(255,255,255,0.7);color:#fff;backdrop-filter:blur(4px);">&#128722; Add to Cart</button>`;
+      }
+    }
+
+    // ============================================================
+    // FAVOURITES
+    // ============================================================
+    function getFavourites() {
+      return JSON.parse(localStorage.getItem('c3_favs') || '[]');
+    }
+    function toggleFavourite(id, name, btn) {
+      haptic(12);
+      let favs = getFavourites();
+      const idx = favs.findIndex(f => f.id == id);
+      if (idx >= 0) {
+        favs.splice(idx, 1);
+        if (btn) { btn.textContent = '🤍'; btn.classList.remove('active'); }
+        toast('Removed from favourites', 'info', 1500);
+      } else {
+        favs.push({ id, name });
+        if (btn) { btn.textContent = '❤️'; btn.classList.add('active'); }
+        toast(`❤️ ${name} saved to favourites!`, 'success', 1800);
+      }
+      localStorage.setItem('c3_favs', JSON.stringify(favs));
+    }
+    function isFavourite(id) {
+      return getFavourites().some(f => f.id == id);
+    }
+
+    // ============================================================
+    // SWIPE-TO-DELETE CART ITEMS
+    // ============================================================
+    function initSwipeDelete() {
+      document.querySelectorAll('.cart-item-swipeable').forEach(el => {
+        let startX = 0, dx = 0, swiping = false;
+        el.addEventListener('touchstart', e => { startX = e.touches[0].clientX; swiping = true; }, { passive: true });
+        el.addEventListener('touchmove', e => {
+          if (!swiping) return;
+          dx = e.touches[0].clientX - startX;
+          if (dx < 0) el.style.transform = `translateX(${Math.max(dx, -80)}px)`;
+        }, { passive: true });
+        el.addEventListener('touchend', () => {
+          swiping = false;
+          if (dx < -60) {
+            const id = el.dataset.itemId;
+            el.style.transform = 'translateX(-100%)';
+            el.style.transition = 'transform 0.25s ease';
+            setTimeout(() => removeFromCart(id), 250);
+            haptic(20);
+          } else {
+            el.style.transform = '';
+            el.style.transition = 'transform 0.2s ease';
+          }
+          dx = 0;
+        });
+      });
+    }
+
+    // ============================================================
+    // PULL-TO-REFRESH
+    // ============================================================
+    (function initPullToRefresh() {
+      let startY = 0, pulling = false;
+      const ind = document.getElementById('ptr-indicator');
+      const mainContent = document.querySelector('.main-content');
+      if (!mainContent || !ind) return;
+      mainContent.addEventListener('touchstart', e => {
+        if (mainContent.scrollTop === 0) { startY = e.touches[0].clientY; pulling = true; }
+      }, { passive: true });
+      mainContent.addEventListener('touchmove', e => {
+        if (!pulling) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy > 40) { ind.classList.add('visible'); ind.querySelector('.ptr-spinner').style.display = 'block'; }
+      }, { passive: true });
+      mainContent.addEventListener('touchend', async () => {
+        if (!pulling) return; pulling = false;
+        if (ind.classList.contains('visible')) {
+          ind.innerHTML = '<div class="ptr-spinner"></div> Refreshing...';
+          haptic(15);
+          const page = State.currentPage;
+          if (page === 'menu')    { State.menuLoaded = false; await loadMenu(); }
+          if (page === 'home')    { State.dashboardLoaded = false; await loadDashboard(); }
+          if (page === 'loyalty') { State.loyaltyLoaded = false; await loadLoyalty(); }
+          if (page === 'games')   { await loadGames(); }
+          setTimeout(() => { ind.classList.remove('visible'); ind.innerHTML = '<div class="ptr-spinner"></div> Pull to refresh'; }, 400);
+        }
+      });
+    })();
+
+    // ============================================================
+    // SEARCH HISTORY
+    // ============================================================
+    function getSearchHistory() {
+      return JSON.parse(localStorage.getItem('c3_search_hist') || '[]');
+    }
+    function addToSearchHistory(q) {
+      if (!q || q.length < 2) return;
+      let hist = getSearchHistory().filter(h => h !== q);
+      hist.unshift(q);
+      hist = hist.slice(0, 5);
+      localStorage.setItem('c3_search_hist', JSON.stringify(hist));
+    }
+    function removeFromSearchHistory(q) {
+      const hist = getSearchHistory().filter(h => h !== q);
+      localStorage.setItem('c3_search_hist', JSON.stringify(hist));
+      renderSearchChips();
+    }
+    function renderSearchChips() {
+      const container = document.getElementById('search-chips');
+      if (!container) return;
+      const hist = getSearchHistory();
+      if (hist.length === 0) { container.innerHTML = ''; return; }
+      container.innerHTML = hist.map(h => `
+        <div class="search-chip" onclick="applySearchChip('${esc(h)}')">
+          🕐 ${esc(h)}
+          <span class="chip-x" onclick="event.stopPropagation();removeFromSearchHistory('${esc(h)}')">✕</span>
+        </div>`).join('');
+    }
+    function applySearchChip(q) {
+      State.searchQuery = q;
+      const inp = document.getElementById('menu-search');
+      if (inp) inp.value = q;
+      renderMenu();
+    }
+
+    // ============================================================
+    // MILESTONES
+    // ============================================================
+    function getMilestones(customer, orders) {
+      const totalOrders = orders ? orders.length : 0;
+      const totalSpent  = orders ? orders.reduce((s, o) => s + parseFloat(o.total || 0), 0) : 0;
+      return [
+        { icon: '🥇', name: 'First Order',   unlocked: totalOrders >= 1  },
+        { icon: '🔟', name: '10 Orders',      unlocked: totalOrders >= 10 },
+        { icon: '💰', name: '₹1K Spent',      unlocked: totalSpent >= 1000 },
+        { icon: '🔥', name: '7-Day Streak',   unlocked: (customer.longest_streak||0) >= 7 },
+        { icon: '👥', name: 'Referral Star',  unlocked: !!customer.referred_by },
+        { icon: '💎', name: 'Platinum',        unlocked: customer.membership_level === 'Platinum' },
+      ];
+    }
+    function renderMilestones(customer, orders) {
+      const milestones = getMilestones(customer, orders);
+      return `
+        <div class="card mb-16">
+          <div class="card-header"><span class="card-title">🏅 Achievements</span></div>
+          <div class="card-pad">
+            <div class="milestones-grid">
+              ${milestones.map(m => `
+                <div class="milestone-badge ${m.unlocked ? 'unlocked' : ''}">
+                  <div class="milestone-icon">${m.icon}</div>
+                  <div class="milestone-name">${m.name}</div>
+                </div>`).join('')}
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px;">${milestones.filter(m=>m.unlocked).length}/${milestones.length} unlocked</div>
+          </div>
+        </div>`;
+    }
+
+    // ============================================================
+    // REORDER
+    // ============================================================
+    function reorder(itemsJson) {
+      haptic(10);
+      const items = JSON.parse(itemsJson);
+      let added = 0;
+      items.forEach(item => {
+        const existing = State.cart.find(c => c.id == item.id);
+        if (existing) existing.qty += item.qty || 1;
+        else State.cart.push({ id: item.id, name: item.name, price: parseFloat(item.price), image: '', qty: item.qty || 1 });
+        added++;
+      });
+      saveCart(); updateCartBadge();
+      toast(`🛒 ${added} item${added>1?'s':''} added to cart!`, 'success', 2000);
+      goToPage('cart');
+    }
+
+    // ============================================================
+    // ITEM CUSTOMISATION MODAL
+    // ============================================================
+    function openCustomiseModal(id, name, price, image) {
+      haptic(8);
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      let selectedSpice = 'Medium', selectedSize = 'Regular', selectedNote = '';
+      overlay.innerHTML = `
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">${esc(name)} <div class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</div></div>
+      <div class="modal-body">
+        <div class="customise-option">
+          <div>
+            <div class="customise-label">Size</div>
+            <div class="customise-chips" id="size-chips">
+              ${['Small','Regular','Large'].map(s=>`<div class="customise-chip${s==='Regular'?' selected':''}" onclick="selectChip('size-chips',this,'${s}')">${s}</div>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="customise-option">
+          <div>
+            <div class="customise-label">Sugar / Spice Level</div>
+            <div class="customise-chips" id="spice-chips">
+              ${['Mild','Medium','Strong'].map(s=>`<div class="customise-chip${s==='Medium'?' selected':''}" onclick="selectChip('spice-chips',this,'${s}')">${s}</div>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="customise-option" style="flex-direction:column;align-items:flex-start;">
+          <div class="customise-label" style="margin-bottom:8px;">Special Note</div>
+          <input type="text" class="form-input" id="cust-note" placeholder="e.g. Less ice, oat milk..." style="font-size:14px;">
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0 0;">
+          <div style="font-size:17px;font-weight:800;color:var(--primary);">${fmt(price)}</div>
+          <button class="btn btn-primary" style="width:auto;padding:12px 24px;" onclick="
+            const note = document.getElementById('cust-note').value;
+            const size = document.querySelector('#size-chips .selected')?.textContent || 'Regular';
+            const spice= document.querySelector('#spice-chips .selected')?.textContent || 'Medium';
+            const suffix = [size!=='Regular'?size:'', spice!=='Medium'?spice:'', note].filter(Boolean).join(', ');
+            const fullName = suffix ? '${esc(name)} ('+suffix+')' : '${esc(name)}';
+            this.closest('.modal-overlay').remove();
+            _origAddToCart(${id}, fullName, ${price}, '${esc(image)}');
+            haptic(8);
+            toast(fullName+' added to cart 🛒','success',1800);
+            saveCart(); updateCartBadge(); updateMenuCartCtrl(${id});
+          ">Add to Cart +</button>
+        </div>
+      </div>
+    </div>`;
+      document.body.appendChild(overlay);
+    }
+    function selectChip(groupId, el, val) {
+      document.querySelectorAll('#'+groupId+' .customise-chip').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    // ============================================================
     // INIT
     // ============================================================
+    // ============================================================
+    // SOUND ENGINE (Web Audio API — zero dependencies)
+    // ============================================================
+    const SFX = {
+      _ctx: null,
+      _muted: localStorage.getItem('c3_muted') === '1',
+      _getCtx() {
+        if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        // Resume if browser suspended it (common on mobile)
+        if (this._ctx.state === 'suspended') this._ctx.resume();
+        return this._ctx;
+      },
+      _play(fn) { if (!this._muted) { try { fn(this._getCtx()); } catch(e) {} } },
+
+      // ✅ Coin collect — earn points / add to cart
+      coin() {
+        this._play(ctx => {
+          [523, 659, 784, 1047].forEach((freq, i) => {
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.frequency.value = freq; o.type = 'sine';
+            const t = ctx.currentTime + i * 0.075;
+            g.gain.setValueAtTime(0.13, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+            o.start(t); o.stop(t + 0.18);
+          });
+        });
+      },
+
+      // 🎉 Success chime — order placed / tier up
+      success() {
+        this._play(ctx => {
+          [523, 659, 784, 1047, 1319].forEach((freq, i) => {
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.frequency.value = freq; o.type = 'triangle';
+            const t = ctx.currentTime + i * 0.11;
+            g.gain.setValueAtTime(0.17, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+            o.start(t); o.stop(t + 0.35);
+          });
+        });
+      },
+
+      // 🛒 Pop — add to cart
+      pop() {
+        this._play(ctx => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.frequency.setValueAtTime(420, ctx.currentTime);
+          o.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.09);
+          o.type = 'sine';
+          g.gain.setValueAtTime(0.14, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.11);
+          o.start(); o.stop(ctx.currentTime + 0.11);
+        });
+      },
+
+      // 🎰 Whoosh — spin wheel start
+      whoosh() {
+        this._play(ctx => {
+          const sr = ctx.sampleRate, len = Math.floor(sr * 0.35);
+          const buf = ctx.createBuffer(1, len, sr);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * (1 - i/len);
+          const src = ctx.createBufferSource(), f = ctx.createBiquadFilter();
+          f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 0.8;
+          src.buffer = buf; src.connect(f); f.connect(ctx.destination);
+          src.start();
+        });
+      },
+
+      // 🏆 Tada — milestone / badge unlock / tier up
+      tada() {
+        this._play(ctx => {
+          [392, 523, 659, 784, 1047].forEach((freq, i) => {
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.frequency.value = freq; o.type = i===4 ? 'square' : 'triangle';
+            const t = ctx.currentTime + i * 0.07;
+            g.gain.setValueAtTime(0.16, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+            o.start(t); o.stop(t + 0.38);
+          });
+        });
+      },
+
+      // 🔔 Ding — order ready notification
+      ding() {
+        this._play(ctx => {
+          [880, 1109].forEach((freq, i) => {
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.frequency.value = freq; o.type = 'sine';
+            const t = ctx.currentTime + i * 0.14;
+            g.gain.setValueAtTime(0.2, t);
+            g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+            o.start(t); o.stop(t + 0.6);
+          });
+        });
+      },
+
+      // ❌ Error buzz
+      error() {
+        this._play(ctx => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.connect(g); g.connect(ctx.destination);
+          o.frequency.value = 110; o.type = 'sawtooth';
+          g.gain.setValueAtTime(0.09, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+          o.start(); o.stop(ctx.currentTime + 0.22);
+        });
+      },
+
+      // Toggle mute
+      toggleMute() {
+        this._muted = !this._muted;
+        localStorage.setItem('c3_muted', this._muted ? '1' : '0');
+        return this._muted;
+      }
+    };
+
+    // Patch toast to play error sound on error type
+    const _origToast = toast;
+    window.toast = function(msg, type='info', duration=3000) {
+      _origToast(msg, type, duration);
+      if (type === 'error') SFX.error();
+    };
+
+    // ============================================================
+    // POINTS FLOAT-UP ANIMATION
+    // ============================================================
+    function floatPoints(pts, anchorEl) {
+      const el = document.createElement('div');
+      el.className = 'points-float';
+      el.textContent = '+' + pts + ' 🪙';
+      const rect = anchorEl ? anchorEl.getBoundingClientRect() : { left: window.innerWidth/2 - 40, top: window.innerHeight * 0.35 };
+      el.style.left = (rect.left + (anchorEl ? rect.width/2 - 30 : 0)) + 'px';
+      el.style.top  = rect.top + 'px';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1300);
+    }
+
+    // ============================================================
+    // MINI CONFETTI (anchor-based burst, no full-screen flash)
+    // ============================================================
+    function triggerMiniConfetti(anchorEl) {
+      const colors = ['#1a5c38','#F59E0B','#10B981','#EC4899','#3B82F6','#8B5CF6'];
+      const rect = anchorEl ? anchorEl.getBoundingClientRect() : { left: window.innerWidth/2, top: 80, width:0, height:0 };
+      const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+      for (let i = 0; i < 22; i++) {
+        const p = document.createElement('div');
+        const isRect = i % 3 === 0;
+        p.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;width:${isRect?'6px':'7px'};height:${isRect?'10px':'7px'};
+          border-radius:${isRect?'2px':'50%'};pointer-events:none;z-index:99999;
+          background:${colors[i%colors.length]};`;
+        document.body.appendChild(p);
+        const angle = (Math.PI * 2 * i) / 22 + (Math.random() - 0.5) * 0.5;
+        const dist  = 45 + Math.random() * 65;
+        p.animate([
+          { transform: 'translate(0,0) scale(1) rotate(0deg)', opacity: 1 },
+          { transform: `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist - 35}px) scale(0) rotate(${360+Math.random()*180}deg)`, opacity: 0 }
+        ], { duration: 650 + Math.random() * 350, easing: 'ease-out' }).onfinish = () => p.remove();
+      }
+    }
+
+    // ============================================================
+    // CART BADGE POP
+    // ============================================================
+    function popCartBadge() {
+      ['cart-badge','cart-bnav-badge','cart-badge-mobile'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.classList.contains('hidden')) {
+          el.classList.remove('badge-pop');
+          void el.offsetWidth; // force reflow
+          el.classList.add('badge-pop');
+          el.addEventListener('animationend', () => el.classList.remove('badge-pop'), { once: true });
+        }
+      });
+    }
+
+    // ============================================================
+    // TIER-UP CELEBRATION MODAL
+    // ============================================================
+    function showTierUpModal(newTier) {
+      SFX.tada();
+      haptic([50, 30, 80]);
+      triggerConfetti();
+      const tierData = LOYALTY.TIERS[newTier] || {};
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay centered';
+      overlay.innerHTML = `
+        <div class="modal-dialog" style="text-align:center;overflow:visible;">
+          <div class="tier-up-icon" style="font-size:62px;margin-bottom:4px;">${tierData.icon||'🏆'}</div>
+          <h2 style="font-family:var(--font-display);font-size:24px;margin:8px 0 4px;">Tier Up! 🎉</h2>
+          <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:8px;">You're now ${newTier}!</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">${tierData.benefits||''}</div>
+          <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">Awesome! 🎉</button>
+        </div>`;
+      document.body.appendChild(overlay);
+    }
+
+    // Track tier for detecting upgrades after orders/logins
+    State._lastKnownTier = null;
+    function checkTierUpgrade(newTier) {
+      const order = ['Bronze','Silver','Gold','Platinum'];
+      if (State._lastKnownTier && order.indexOf(newTier) > order.indexOf(State._lastKnownTier)) {
+        showTierUpModal(newTier);
+      }
+      State._lastKnownTier = newTier;
+    }
+
+    // ============================================================
+    // ORDER COUNTDOWN TIMER
+    // ============================================================
+    const CountdownState = {
+      intervalId: null,
+      orderNum: null,
+      endsAt: null,      // Date object
+      totalMs: null,
+      orderType: null,
+    };
+
+    const COUNTDOWN_DURATION = {
+      'dine-in': 15 * 60 * 1000,       // 15 mins
+      'home-delivery': 45 * 60 * 1000,  // 45 mins
+    };
+
+    function startOrderCountdown(orderNum, orderType) {
+      // Clear any previous countdown
+      if (CountdownState.intervalId) clearInterval(CountdownState.intervalId);
+
+      const dur = COUNTDOWN_DURATION[orderType] || COUNTDOWN_DURATION['dine-in'];
+      CountdownState.orderNum  = orderNum;
+      CountdownState.orderType = orderType;
+      CountdownState.totalMs   = dur;
+      CountdownState.endsAt    = new Date(Date.now() + dur);
+
+      // Persist so it survives page navigation within session
+      sessionStorage.setItem('c3_countdown', JSON.stringify({
+        orderNum, orderType,
+        endsAt: CountdownState.endsAt.toISOString(),
+        totalMs: dur
+      }));
+
+      showCountdownBar();
+      tickCountdown();
+      CountdownState.intervalId = setInterval(tickCountdown, 1000);
+    }
+
+    function showCountdownBar() {
+      const bar = document.getElementById('order-countdown-bar');
+      if (bar) { bar.classList.remove('hidden','done','urgent'); }
+    }
+
+    function tickCountdown() {
+      const bar    = document.getElementById('order-countdown-bar');
+      const timeEl = document.getElementById('countdown-time');
+      const fillEl = document.getElementById('countdown-progress-fill');
+      const iconEl = document.getElementById('countdown-icon');
+      const titleEl = document.getElementById('countdown-title');
+      const subEl   = document.getElementById('countdown-sub');
+      if (!bar || !timeEl) return;
+
+      const now  = Date.now();
+      const end  = CountdownState.endsAt.getTime();
+      const left = Math.max(0, end - now);
+      const pct  = (left / CountdownState.totalMs) * 100;
+
+      const mins = Math.floor(left / 60000);
+      const secs = Math.floor((left % 60000) / 1000);
+      const label = left === 0 ? '✅ Ready!' : `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+
+      timeEl.textContent = label;
+      if (fillEl) fillEl.style.width = pct + '%';
+
+      if (left === 0) {
+        // Order ready!
+        clearInterval(CountdownState.intervalId);
+        bar.classList.add('done');
+        bar.classList.remove('urgent');
+        if (iconEl) iconEl.textContent = '✅';
+        if (titleEl) titleEl.textContent = `Order #${CountdownState.orderNum} is Ready!`;
+        if (subEl) subEl.textContent = CountdownState.orderType === 'home-delivery' ? 'Out for delivery 🛵' : 'Head to your table 🍽️';
+        SFX.ding();
+        haptic([80, 40, 80]);
+        toast(`🔔 Order #${CountdownState.orderNum} is ready!`, 'success', 5000);
+        // Auto-hide after 30s
+        setTimeout(() => { if(bar) bar.classList.add('hidden'); }, 30000);
+      } else if (left < 3 * 60 * 1000) {
+        // Last 3 mins — urgent
+        bar.classList.add('urgent');
+        if (iconEl) iconEl.textContent = '🔥';
+        if (titleEl) titleEl.textContent = `Order #${CountdownState.orderNum} — Almost Ready!`;
+        if (subEl)   subEl.textContent = CountdownState.orderType === 'home-delivery' ? 'Almost at your door 🛵' : 'Serving soon 🍽️';
+      } else {
+        if (iconEl) iconEl.textContent = CountdownState.orderType === 'home-delivery' ? '🛵' : '⏳';
+        if (titleEl) titleEl.textContent = `Order #${CountdownState.orderNum} in progress`;
+        if (subEl)   subEl.textContent = CountdownState.orderType === 'home-delivery' ? 'On its way to you 🏠' : 'Being prepared for you 🍳';
+      }
+    }
+
+    function restoreCountdown() {
+      const saved = sessionStorage.getItem('c3_countdown');
+      if (!saved) return;
+      try {
+        const { orderNum, orderType, endsAt, totalMs } = JSON.parse(saved);
+        const end = new Date(endsAt);
+        if (end > new Date()) {
+          CountdownState.orderNum  = orderNum;
+          CountdownState.orderType = orderType;
+          CountdownState.endsAt    = end;
+          CountdownState.totalMs   = totalMs;
+          showCountdownBar();
+          tickCountdown();
+          if (CountdownState.intervalId) clearInterval(CountdownState.intervalId);
+          CountdownState.intervalId = setInterval(tickCountdown, 1000);
+        } else {
+          sessionStorage.removeItem('c3_countdown');
+        }
+      } catch(e) {}
+    }
+
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
         const authScreen = document.getElementById('auth-screen');
@@ -6893,9 +8181,9 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
       }
     });
 
-    // Close auth modal on backdrop click
+    // Close auth modal on backdrop click (clicking the dark overlay, NOT the modal card)
     document.getElementById('auth-screen').addEventListener('click', function(e) {
-      if (e.target === this || e.target === this.querySelector('.auth-modal-inner') === false && e.target.classList.contains('auth-modal-overlay')) {
+      if (e.target === this) {
         closeAuthModal();
       }
     });
@@ -6925,29 +8213,23 @@ $dark_mode = $customer ? $customer['dark_mode'] : 0;
     // Always open on Menu page first (front page); logged-in users can click Dashboard
     goToPage('menu');
 
-    // Auto-open signup with referral code if ?ref= in URL
-    const _urlRef = new URLSearchParams(window.location.search).get('ref');
-    if (_urlRef) {
-      openAuthModal('signup');
-      setTimeout(() => {
-        const refInput = document.getElementById('signup-refer-code');
-        if (refInput && !refInput.value) {
-          refInput.value = _urlRef.toUpperCase();
-          toast('Referral code applied! 🎉', 'success', 2500);
-        }
-      }, 300);
-    }
+    // Restore any active order countdown from session
+    restoreCountdown();
+
+    // Init done
   </script>
   <!-- Watermark -->
   <div style="
-    position:fixed;bottom:68px;left:50%;transform:translateX(-50%);
-    z-index:8000;pointer-events:none;text-align:center;
-    background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);
-    border-radius:20px;padding:4px 12px;white-space:nowrap;">
-    <a href="https://wa.me/919575131552" target="_blank" style="
-      color:rgba(255,255,255,0.75);font-size:10px;font-weight:500;
-      text-decoration:none;letter-spacing:0.3px;pointer-events:all;">
-      💻 Developed by <strong style="color:#25D366;">Nexora Scale</strong> Ujjain
+    position:fixed;bottom:72px;left:50%;transform:translateX(-50%);
+    z-index:8000;pointer-events:none;text-align:center;">
+    <a href="https://nexora-scale.unaux.com/qrcode.html?i=1" target="_blank" style="
+      color:rgba(150,150,150,0.8);font-size:9.5px;font-weight:600;
+      text-decoration:none;letter-spacing:0.2px;pointer-events:all;
+      white-space:nowrap;
+      background:var(--bg-card);border:1px solid var(--border);
+      border-radius:10px;padding:3px 8px;display:inline-block;
+      box-shadow:0 1px 6px rgba(0,0,0,0.1);">
+      💻 <strong style="color:#25D366;">Nexora Scale</strong>
     </a>
 
 
