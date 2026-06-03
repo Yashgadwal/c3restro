@@ -1,0 +1,2641 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C3 Restro Pure Veg | Fine Dining in Ujjain</title>
+<meta name="description" content="Best Pure Veg Fine Dining Restaurant in Ujjain. Birthday Parties, Family Dining, Couple Setups, Corporate Events. Nagziri, Ujjain.">
+<meta name="keywords" content="C3 Restro, pure veg restaurant Ujjain, fine dining Ujjain, birthday party restaurant Ujjain, best veg restaurant Ujjain">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://images.unsplash.com">
+<link rel="preconnect" href="https://lh3.googleusercontent.com">
+<link rel="dns-prefetch" href="https://unpkg.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+<style>
+:root {
+  --white: #FFFFFF;
+  --off-white: #FAFAF8;
+  --cream: #F7F4EE;
+  --warm-gray: #F2EFE9;
+  --light-gray: #E8E4DD;
+  --mid-gray: #C4BFB5;
+  --text-muted: #8A8278;
+  --text-soft: #5A554E;
+  --text-main: #1C1916;
+
+  --amber: #C17F24;
+  --amber-light: #E8A43A;
+  --amber-pale: #FDF3E3;
+  --amber-border: rgba(193,127,36,0.2);
+
+  --sage: #5C7A5E;
+  --sage-light: #7A9E7C;
+  --sage-pale: #EEF4EE;
+
+  --terracotta: #B5532A;
+  --terracotta-pale: #FDF0EB;
+
+  --shadow-sm: 0 2px 12px rgba(28,25,22,0.06);
+  --shadow-md: 0 8px 32px rgba(28,25,22,0.10);
+  --shadow-lg: 0 20px 64px rgba(28,25,22,0.12);
+  --shadow-xl: 0 40px 100px rgba(28,25,22,0.14);
+  --shadow-amber: 0 12px 40px rgba(193,127,36,0.18);
+
+  --gradient-amber: linear-gradient(135deg, #C17F24 0%, #E8A43A 50%, #C17F24 100%);
+  --gradient-sage: linear-gradient(135deg, #5C7A5E 0%, #7A9E7C 100%);
+  --gradient-warm: linear-gradient(180deg, #FAFAF8 0%, #F7F4EE 100%);
+  --gradient-section: linear-gradient(180deg, #F7F4EE 0%, #FAFAF8 100%);
+  --gradient-hero-light: linear-gradient(180deg, rgba(250,250,248,0.15) 0%, rgba(247,244,238,0.7) 55%, #F7F4EE 100%);
+
+  --radius: 20px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+  --ease: cubic-bezier(.16,1,.3,1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  background: var(--off-white);
+  color: var(--text-main);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--amber); border-radius: 4px; }
+
+::selection { background: rgba(193,127,36,0.18); color: var(--text-main); }
+
+/* ─── NAV ─────────────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 22px 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.5s var(--ease);
+}
+nav.scrolled {
+  background: rgba(250,250,248,0.92);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  padding: 14px 64px;
+  border-bottom: 1px solid var(--light-gray);
+  box-shadow: var(--shadow-sm);
+}
+.nav-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: 1px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.nav-logo .dot { color: var(--amber); }
+.nav-logo .restro { font-weight: 400; font-style: italic; }
+.nav-links {
+  display: flex;
+  gap: 36px;
+  list-style: none;
+  align-items: center;
+}
+.nav-links a {
+  color: var(--text-soft);
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  font-weight: 500;
+  transition: color 0.3s;
+  position: relative;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -3px; left: 0;
+  width: 0; height: 1.5px;
+  background: var(--amber);
+  transition: width 0.35s var(--ease);
+  border-radius: 2px;
+}
+.nav-links a:hover { color: var(--text-main); }
+.nav-links a:hover::after { width: 100%; }
+.nav-cta {
+  background: var(--text-main);
+  color: var(--white);
+  padding: 10px 24px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-decoration: none;
+  transition: all 0.35s var(--ease);
+  white-space: nowrap;
+}
+.nav-cta:hover {
+  background: var(--amber);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-amber);
+  color: var(--white);
+}
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 6px;
+  background: none;
+  border: none;
+}
+.nav-hamburger span {
+  width: 24px; height: 2px;
+  background: var(--text-main);
+  transition: all 0.3s;
+  display: block;
+  border-radius: 2px;
+}
+.nav-mobile-menu {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(250,250,248,0.98);
+  backdrop-filter: blur(30px);
+  z-index: 999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+.nav-mobile-menu.open { display: flex; }
+.nav-mobile-menu a {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  transition: color 0.3s;
+}
+.nav-mobile-menu a:hover { color: var(--amber); }
+.nav-mobile-close {
+  position: absolute;
+  top: 24px; right: 24px;
+  background: none; border: none;
+  color: var(--text-muted);
+  font-size: 28px;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+.nav-mobile-close:hover { color: var(--text-main); }
+
+/* ─── HERO ─────────────────────────────────────────── */
+#hero {
+  position: relative;
+  height: 100vh;
+  min-height: 720px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--cream);
+}
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.hero-bg img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0.22;
+  filter: saturate(0.85) brightness(0.95);
+}
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-hero-light);
+}
+.hero-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.6;
+}
+.hero-content {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  max-width: 860px;
+  padding: 0 24px;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  border: 1px solid var(--amber-border);
+  padding: 7px 18px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  animation: fadeUp 0.9s 0.2s var(--ease) forwards;
+}
+.hero-badge .dot-pulse {
+  width: 6px; height: 6px;
+  background: var(--sage);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+.hero-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(52px, 7.5vw, 104px);
+  font-weight: 900;
+  line-height: 0.95;
+  color: var(--text-main);
+  margin-bottom: 24px;
+  opacity: 0;
+  animation: fadeUp 0.9s 0.4s var(--ease) forwards;
+  letter-spacing: -2px;
+}
+.hero-title em {
+  color: var(--amber);
+  font-style: italic;
+  display: block;
+}
+.hero-subtitle {
+  font-size: clamp(15px, 1.4vw, 18px);
+  color: var(--text-soft);
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  margin-bottom: 48px;
+  opacity: 0;
+  animation: fadeUp 0.9s 0.6s var(--ease) forwards;
+  line-height: 1.8;
+}
+.hero-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeUp 0.9s 0.8s var(--ease) forwards;
+}
+.btn-primary {
+  background: var(--text-main);
+  color: var(--white);
+  padding: 14px 32px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-decoration: none;
+  transition: all 0.4s var(--ease);
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-primary:hover {
+  background: var(--amber);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-amber);
+  color: var(--white);
+}
+.btn-outline {
+  background: var(--white);
+  color: var(--text-main);
+  padding: 14px 32px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-decoration: none;
+  transition: all 0.4s var(--ease);
+  border: 1.5px solid var(--light-gray);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-outline:hover {
+  border-color: var(--amber);
+  background: var(--amber-pale);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-amber);
+  color: var(--amber);
+}
+.btn-party {
+  background: var(--amber-pale);
+  color: var(--amber);
+  padding: 14px 32px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-decoration: none;
+  transition: all 0.4s var(--ease);
+  border: 1.5px solid var(--amber-border);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-party:hover {
+  background: var(--amber);
+  color: var(--white);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-amber);
+}
+.floating-badges-bar {
+  background: var(--white);
+  border-bottom: 1px solid var(--light-gray);
+  padding: 14px 24px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  z-index: 10;
+}
+.badge {
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--light-gray);
+  padding: 8px 18px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s var(--ease);
+  box-shadow: var(--shadow-sm);
+}
+.badge:hover {
+  border-color: var(--amber-border);
+  background: var(--amber-pale);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-amber);
+  color: var(--amber);
+}
+.scroll-indicator {
+  position: absolute;
+  bottom: 28px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+}
+.scroll-indicator span {
+  font-size: 9px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--amber);
+  font-weight: 500;
+}
+.scroll-line {
+  width: 1.5px; height: 44px;
+  background: linear-gradient(var(--amber), transparent);
+  animation: scrollPulse 2.5s ease-in-out infinite;
+  border-radius: 2px;
+}
+@keyframes scrollPulse { 0%,100%{opacity:0.3;transform:scaleY(0.8)} 50%{opacity:1;transform:scaleY(1)} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+
+/* ─── ABOUT STRIP ─────────────────────────────────── */
+#about-strip {
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--white);
+  border-top: 1px solid var(--light-gray);
+  border-bottom: 1px solid var(--light-gray);
+}
+.strip-item {
+  padding: 40px 28px;
+  text-align: center;
+  border-right: 1px solid var(--light-gray);
+  transition: background 0.4s;
+}
+.strip-item:last-child { border-right: none; }
+.strip-item:hover { background: var(--amber-pale); }
+.strip-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  display: block;
+  color: var(--amber);
+}
+.strip-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 8px;
+  display: block;
+  font-weight: 500;
+}
+
+/* ─── SECTIONS COMMON ──────────────────────────────── */
+section { padding: 100px 72px; }
+.section-eyebrow {
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 16px;
+  display: block;
+  font-weight: 600;
+}
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(34px, 3.8vw, 58px);
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 18px;
+  color: var(--text-main);
+}
+.section-title em { color: var(--amber); font-style: italic; }
+.section-sub {
+  color: var(--text-soft);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.8;
+  max-width: 540px;
+}
+.amber-line {
+  width: 48px; height: 2px;
+  background: var(--gradient-amber);
+  margin: 20px 0;
+  border-radius: 2px;
+}
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ─── STORY ─────────────────────────────────────────── */
+#story {
+  background: var(--white);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+.story-img-wrap {
+  position: relative;
+  background: var(--cream);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.story-img {
+  width: 100%;
+  height: auto;
+  min-height: 320px;
+  max-height: 580px;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: var(--radius);
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+}
+.story-badge {
+  position: absolute;
+  top: 28px; left: -24px;
+  background: var(--white);
+  border: 1px solid var(--light-gray);
+  color: var(--text-main);
+  padding: 20px 24px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+.story-badge strong {
+  display: block;
+  font-family: 'Playfair Display', serif;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--amber);
+}
+.story-badge span {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: block;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+.story-features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 32px;
+}
+.story-feat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-soft);
+  font-weight: 500;
+  padding: 10px 14px;
+  background: var(--cream);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--light-gray);
+  transition: all 0.3s;
+}
+.story-feat:hover { border-color: var(--amber-border); background: var(--amber-pale); color: var(--amber); }
+.story-feat::before { content: '✦'; color: var(--amber); font-size: 8px; flex-shrink: 0; }
+
+/* ─── MENU ──────────────────────────────────────────── */
+#menu { background: var(--off-white); }
+.menu-header { margin-bottom: 48px; }
+
+.delivery-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, var(--text-main) 0%, #2d2820 100%);
+  border-radius: var(--radius);
+  text-decoration: none;
+  border: 1px solid rgba(193,127,36,0.25);
+  box-shadow: var(--shadow-md);
+  transition: all 0.35s var(--ease);
+  max-width: 520px;
+}
+.delivery-cta:hover {
+  background: linear-gradient(135deg, var(--amber) 0%, #b87320 100%);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-amber);
+}
+.delivery-cta-icon {
+  width: 44px; height: 44px;
+  background: rgba(193,127,36,0.18);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--amber-light);
+  flex-shrink: 0;
+  transition: background 0.35s;
+}
+.delivery-cta:hover .delivery-cta-icon { background: rgba(255,255,255,0.2); color: #fff; }
+.delivery-cta-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+.delivery-cta-text strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.2px;
+}
+.delivery-cta-text span {
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  font-weight: 400;
+}
+.delivery-cta-arrow {
+  font-size: 18px;
+  color: var(--amber-light);
+  transition: transform 0.3s var(--ease);
+}
+.delivery-cta:hover .delivery-cta-arrow { transform: translateX(4px); color: #fff; }
+
+@media (max-width: 640px) {
+  .delivery-cta { max-width: 100%; padding: 14px 16px; gap: 12px; }
+  .delivery-cta-text strong { font-size: 13px; }
+  .delivery-cta-text span { font-size: 10px; }
+}
+.menu-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 48px;
+  border-bottom: 1.5px solid var(--light-gray);
+  flex-wrap: wrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.menu-tabs::-webkit-scrollbar { display: none; }
+.menu-tab {
+  padding: 12px 24px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border-bottom: 2.5px solid transparent;
+  margin-bottom: -1.5px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.menu-tab.active, .menu-tab:hover { color: var(--amber); border-bottom-color: var(--amber); }
+.menu-category { display: none; }
+.menu-category.active { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+.food-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: all 0.5s var(--ease);
+  cursor: pointer;
+  border: 1px solid var(--light-gray);
+  box-shadow: var(--shadow-sm);
+}
+.food-card:hover {
+  transform: translateY(-8px);
+  border-color: var(--amber-border);
+  box-shadow: var(--shadow-lg);
+}
+.food-img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  transition: transform 0.7s var(--ease);
+  display: block;
+}
+.food-card:hover .food-img { transform: scale(1.06); }
+.food-info { padding: 20px 22px 24px; }
+.food-tag {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 8px;
+  display: block;
+  font-weight: 600;
+}
+.food-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+.food-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+.food-price {
+  font-size: 20px;
+  color: var(--amber);
+  font-weight: 700;
+  font-family: 'Playfair Display', serif;
+}
+.veg-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border: 1.5px solid var(--sage);
+  border-radius: 2px;
+  margin-right: 6px;
+  position: relative;
+  vertical-align: middle;
+}
+.veg-dot::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--sage);
+}
+
+/* ─── CELEBRATIONS ──────────────────────────────────── */
+#celebrations { background: var(--cream); }
+.celebrations-header { text-align: center; margin-bottom: 64px; }
+.celebrations-header .section-sub { margin: 0 auto; }
+.celebrations-header .amber-line { margin: 16px auto; }
+.celebration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.celebration-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.5s var(--ease);
+  border: 1px solid var(--light-gray);
+  box-shadow: var(--shadow-sm);
+}
+.celebration-card:hover {
+  transform: translateY(-10px);
+  border-color: var(--amber-border);
+  box-shadow: var(--shadow-lg);
+}
+.celebration-img {
+  width: 100%;
+  aspect-ratio: 3/2;
+  object-fit: cover;
+  transition: all 0.6s var(--ease);
+  filter: brightness(0.96) saturate(0.9);
+}
+.celebration-card:hover .celebration-img { filter: brightness(1) saturate(1.05); transform: scale(1.04); }
+.celebration-body { padding: 26px; }
+.celebration-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-main);
+}
+.celebration-details {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  line-height: 1.8;
+}
+.celebration-price {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+.celebration-price span {
+  font-size: 24px;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  color: var(--amber);
+}
+.btn-book {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--cream);
+  border: 1.5px solid var(--light-gray);
+  color: var(--text-main);
+  padding: 9px 20px;
+  border-radius: 50px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s var(--ease);
+}
+.btn-book:hover {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: var(--white);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-amber);
+}
+
+/* ─── BIRTHDAY ───────────────────────────────────────── */
+#birthday { background: var(--white); }
+.birthday-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 72px;
+  align-items: center;
+}
+.birthday-imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.bday-img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  transition: transform 0.5s var(--ease);
+  box-shadow: var(--shadow-sm);
+}
+.bday-img:hover { transform: scale(1.03); box-shadow: var(--shadow-md); }
+.bday-img:first-child { grid-column: 1 / -1; aspect-ratio: 16/9; }
+.birthday-offers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 28px 0;
+}
+.offer-item {
+  background: var(--cream);
+  border: 1px solid var(--light-gray);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text-soft);
+  transition: all 0.3s;
+  font-weight: 500;
+}
+.offer-item:hover { background: var(--amber-pale); border-color: var(--amber-border); color: var(--text-main); }
+.offer-item .offer-icon { font-size: 22px; margin-bottom: 10px; display: block; }
+.slots-badge {
+  background: var(--amber-pale);
+  border: 1.5px solid var(--amber-border);
+  border-radius: var(--radius-xs);
+  padding: 14px 20px;
+  font-size: 12px;
+  color: var(--amber);
+  letter-spacing: 0.3px;
+  margin-top: 16px;
+  display: inline-block;
+  font-weight: 500;
+}
+
+/* ─── GALLERY ─────────────────────────────────────────── */
+#gallery { background: var(--off-white); }
+.gallery-header { text-align: center; margin-bottom: 52px; }
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.g-item {
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  position: relative;
+  border: 1px solid var(--light-gray);
+  transition: border-color 0.4s, box-shadow 0.4s;
+}
+.g-item:hover { border-color: var(--amber-border); box-shadow: var(--shadow-md); }
+.g-item:nth-child(1) { grid-column: span 2; grid-row: span 2; }
+.g-item:nth-child(5) { grid-column: span 2; }
+.g-item img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: all 0.6s var(--ease);
+  filter: brightness(0.95) saturate(0.95);
+}
+.g-item:hover img { transform: scale(1.07); filter: brightness(1.02) saturate(1.08); }
+.g-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 50%, rgba(28,25,22,0.65) 100%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  display: flex;
+  align-items: flex-end;
+  padding: 20px;
+}
+.g-item:hover .g-overlay { opacity: 1; }
+.g-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--white);
+  font-weight: 600;
+}
+.gallery-insta {
+  text-align: center;
+  margin-top: 36px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.gallery-insta a { color: var(--amber); text-decoration: none; font-weight: 600; }
+
+/* ─── WHY US ───────────────────────────────────────────── */
+#why { background: var(--white); }
+.why-header { text-align: center; margin-bottom: 56px; }
+.why-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+.why-card {
+  background: var(--cream);
+  border: 1px solid var(--light-gray);
+  border-radius: var(--radius);
+  padding: 28px 18px;
+  text-align: center;
+  transition: all 0.4s var(--ease);
+  position: relative;
+  overflow: hidden;
+}
+.why-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2.5px;
+  background: var(--gradient-amber);
+  transform: scaleX(0);
+  transition: transform 0.4s var(--ease);
+}
+.why-card:hover {
+  border-color: var(--amber-border);
+  background: var(--amber-pale);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-md);
+}
+.why-card:hover::after { transform: scaleX(1); }
+.why-icon { font-size: 34px; margin-bottom: 14px; display: block; }
+.why-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+.why-desc { font-size: 12px; color: var(--text-muted); line-height: 1.7; font-weight: 400; }
+
+/* ─── EXPERIENCE ───────────────────────────────────────── */
+#experience { background: var(--cream); padding: 0; }
+.experience-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--light-gray);
+}
+.exp-item {
+  background: var(--cream);
+  padding: 60px 48px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.5s;
+}
+.exp-item:hover { background: var(--white); }
+.exp-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 120px;
+  font-weight: 900;
+  color: rgba(193,127,36,0.06);
+  position: absolute;
+  top: -20px; left: 12px;
+  line-height: 1;
+  pointer-events: none;
+  transition: color 0.4s;
+  user-select: none;
+}
+.exp-item:hover .exp-num { color: rgba(193,127,36,0.1); }
+.exp-content { position: relative; z-index: 1; }
+.exp-tag {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 12px;
+  display: block;
+  font-weight: 600;
+}
+.exp-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 16px;
+  line-height: 1.2;
+}
+.exp-desc { font-size: 14px; color: var(--text-soft); line-height: 1.9; }
+.exp-quote {
+  text-align: center;
+  padding: 80px 72px;
+  background: var(--white);
+  border-top: 1px solid var(--light-gray);
+}
+.exp-quote blockquote {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(24px, 2.8vw, 44px);
+  font-style: italic;
+  color: var(--text-main);
+  line-height: 1.5;
+  max-width: 800px;
+  margin: 0 auto;
+  font-weight: 400;
+}
+.exp-quote blockquote em { color: var(--amber); }
+
+/* ─── STATS ─────────────────────────────────────────────── */
+#stats { background: var(--text-main); padding: 60px 40px; }
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.stat-num {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(32px, 3.5vw, 52px);
+  font-weight: 900;
+  color: var(--amber);
+  line-height: 1;
+  display: block;
+}
+.stat-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  margin-top: 8px;
+  display: block;
+  font-weight: 500;
+}
+
+/* ─── REVIEWS ──────────────────────────────────────────── */
+#reviews { background: var(--cream); }
+.reviews-header { text-align: center; margin-bottom: 52px; }
+.reviews-track-wrap {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+}
+.reviews-track {
+  display: flex;
+  gap: 20px;
+  animation: scrollReviews 38s linear infinite;
+  width: max-content;
+}
+.reviews-track:hover { animation-play-state: paused; }
+.review-card {
+  background: var(--white);
+  border: 1px solid var(--light-gray);
+  border-radius: var(--radius);
+  padding: 30px;
+  min-width: 360px;
+  flex-shrink: 0;
+  transition: all 0.4s var(--ease);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.review-card::before {
+  content: '"';
+  position: absolute;
+  top: -5px; left: 18px;
+  font-family: 'Playfair Display', serif;
+  font-size: 110px;
+  color: rgba(193,127,36,0.07);
+  line-height: 1;
+  pointer-events: none;
+}
+.review-card:hover { border-color: var(--amber-border); box-shadow: var(--shadow-md); }
+.review-stars { color: var(--amber); font-size: 14px; margin-bottom: 14px; letter-spacing: 2px; }
+.review-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-soft);
+  margin-bottom: 22px;
+  font-style: italic;
+  position: relative;
+  z-index: 1;
+}
+.reviewer { display: flex; align-items: center; gap: 12px; }
+.reviewer-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--gradient-amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--white);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-amber);
+}
+.reviewer-name { font-weight: 600; font-size: 14px; color: var(--text-main); }
+.reviewer-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+@keyframes scrollReviews { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+/* ─── LINKS / ORDERING ────────────────────────────────── */
+#order-links { background: var(--white); padding: 80px 72px; }
+.order-links-inner { text-align: center; }
+.order-links-grid {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 40px;
+}
+.order-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.35s var(--ease);
+  border: 2px solid transparent;
+}
+.order-btn-order { background: var(--amber-pale); color: var(--amber); border-color: var(--amber-border); }
+.order-btn-order:hover { background: var(--amber); color: #fff; box-shadow: var(--shadow-amber); transform: translateY(-3px); }
+.order-btn-wa { background: #F0FDF4; color: #16A34A; border-color: rgba(22,163,74,0.2); }
+.order-btn-wa:hover { background: #16A34A; color: #fff; box-shadow: 0 8px 24px rgba(22,163,74,0.3); transform: translateY(-3px); }
+.order-btn-linktree { background: #F5F3FF; color: #7C3AED; border-color: rgba(124,58,237,0.2); }
+.order-btn-linktree:hover { background: #7C3AED; color: #fff; box-shadow: 0 8px 24px rgba(124,58,237,0.3); transform: translateY(-3px); }
+.order-btn-gmaps { background: #F0F9FF; color: #0284C7; border-color: rgba(2,132,199,0.2); }
+.order-btn-gmaps:hover { background: #0284C7; color: #fff; box-shadow: 0 8px 24px rgba(2,132,199,0.3); transform: translateY(-3px); }
+.order-btn-insta { background: #FFF0F8; color: #E1306C; border-color: rgba(225,48,108,0.2); }
+.order-btn-insta:hover { background: linear-gradient(135deg,#833AB4,#E1306C,#FD1D1D); color: #fff; box-shadow: 0 8px 24px rgba(225,48,108,0.3); transform: translateY(-3px); border-color: transparent; }
+
+/* ─── CONTACT ──────────────────────────────────────────── */
+#contact {
+  background: var(--off-white);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 72px;
+  align-items: start;
+}
+.contact-details {
+  margin: 32px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.contact-item { display: flex; align-items: flex-start; gap: 16px; }
+.contact-icon {
+  width: 46px; height: 46px;
+  background: var(--amber-pale);
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.contact-item:hover .contact-icon { background: var(--amber); }
+.contact-text strong {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.contact-text span { font-size: 14px; color: var(--text-soft); line-height: 1.7; }
+.contact-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn-call {
+  background: var(--text-main);
+  color: var(--white);
+  padding: 12px 24px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s var(--ease);
+  box-shadow: var(--shadow-sm);
+}
+.btn-call:hover { background: var(--amber); transform: translateY(-2px); box-shadow: var(--shadow-amber); color: var(--white); }
+.btn-wa {
+  background: var(--white);
+  border: 1.5px solid rgba(37,211,102,0.4);
+  color: #16A34A;
+  padding: 12px 24px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s var(--ease);
+}
+.btn-wa:hover { background: #16A34A; color: #fff; transform: translateY(-2px); border-color: #16A34A; box-shadow: 0 8px 24px rgba(22,163,74,0.3); }
+.map-wrap {
+  margin-top: 32px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--light-gray);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── RESERVATION FORM ──────────────────────────────── */
+.res-form {
+  background: var(--white);
+  border: 1.5px solid var(--light-gray);
+  border-radius: var(--radius);
+  padding: 42px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+.res-form::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 250px; height: 250px;
+  background: radial-gradient(circle, rgba(193,127,36,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.res-form h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 30px;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+.form-group label {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  font-weight: 600;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+  background: var(--cream);
+  border: 1.5px solid var(--light-gray);
+  border-radius: var(--radius-xs);
+  padding: 12px 16px;
+  color: var(--text-main);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s;
+  font-weight: 400;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--amber);
+  background: var(--white);
+  box-shadow: 0 0 0 3px rgba(193,127,36,0.1);
+}
+.form-group select option { background: #fff; color: var(--text-main); }
+.form-group textarea { resize: vertical; min-height: 88px; }
+.btn-submit {
+  width: 100%;
+  background: var(--text-main);
+  color: var(--white);
+  padding: 16px;
+  border: none;
+  border-radius: 50px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.4s var(--ease);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  box-shadow: var(--shadow-md);
+}
+.btn-submit:hover { background: var(--amber); transform: translateY(-3px); box-shadow: var(--shadow-amber); }
+
+/* ─── FOOTER ─────────────────────────────────────────── */
+footer {
+  background: var(--text-main);
+  padding: 72px;
+  position: relative;
+  overflow: hidden;
+}
+footer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: var(--gradient-amber);
+}
+.footer-inner {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 60px;
+}
+.footer-brand .nav-logo {
+  font-size: 30px;
+  display: inline-flex;
+  margin-bottom: 16px;
+  color: var(--white);
+}
+.footer-brand .nav-logo .dot { color: var(--amber); }
+.footer-brand p {
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.9;
+  max-width: 280px;
+  margin-bottom: 24px;
+}
+.footer-social { display: flex; gap: 10px; }
+.social-btn {
+  width: 40px; height: 40px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  text-decoration: none;
+  transition: all 0.3s var(--ease);
+  background: rgba(255,255,255,0.05);
+}
+.social-btn:hover {
+  border-color: var(--amber);
+  background: rgba(193,127,36,0.15);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-amber);
+}
+.footer-links h4 {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 22px;
+  font-weight: 600;
+}
+.footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.footer-links a {
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  text-decoration: none;
+  transition: color 0.3s;
+  font-weight: 400;
+}
+.footer-links a:hover { color: var(--amber); }
+.footer-bottom {
+  margin-top: 52px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+}
+.footer-watermark {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255,255,255,0.18);
+  letter-spacing: 0.3px;
+}
+.footer-watermark a {
+  color: rgba(255,255,255,0.32);
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: color 0.3s;
+}
+.footer-watermark a:hover { color: var(--amber); }
+
+/* ─── FLOATING BUTTONS ──────────────────────────────── */
+
+/* Stack bottom→top: Order → WhatsApp → Instagram */
+.order-float {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  height: 52px;
+  background: var(--gradient-amber);
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #fff;
+  text-decoration: none;
+  z-index: 500;
+  box-shadow: var(--shadow-amber);
+  transition: all 0.35s var(--ease);
+  white-space: nowrap;
+}
+.order-float i { font-size: 18px; }
+.order-float:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(193,127,36,0.45); color: #fff; }
+
+.wa-float {
+  position: fixed;
+  bottom: 92px; right: 24px;
+  width: 52px; height: 52px;
+  background: #25D366;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  text-decoration: none;
+  z-index: 500;
+  box-shadow: 0 6px 20px rgba(37,211,102,0.4);
+  transition: all 0.35s var(--ease);
+  color: #fff;
+}
+.wa-float:hover { transform: scale(1.1) translateY(-3px); box-shadow: 0 14px 32px rgba(37,211,102,0.5); color: #fff; }
+
+/* Instagram — sits above WhatsApp */
+.ig-float {
+  position: fixed;
+  bottom: 156px; right: 24px;
+  width: 52px; height: 52px;
+  background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: #fff;
+  text-decoration: none;
+  z-index: 500;
+  box-shadow: 0 6px 20px rgba(214,36,159,0.35);
+  transition: all 0.35s var(--ease);
+}
+.ig-float:hover { transform: scale(1.1) translateY(-3px); box-shadow: 0 14px 32px rgba(214,36,159,0.5); color: #fff; }
+
+@media (max-width: 640px) {
+  .order-float { bottom: 20px !important; right: 20px !important; height: 46px !important; font-size: 11px !important; padding: 0 14px !important; }
+  .order-float i { font-size: 16px !important; }
+  .wa-float { bottom: 82px !important; right: 20px !important; width: 46px !important; height: 46px !important; font-size: 22px !important; }
+  .ig-float { bottom: 140px !important; right: 20px !important; width: 46px !important; height: 46px !important; font-size: 22px !important; }
+}
+
+/* Map open link */
+.map-open-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: var(--white);
+  border: 1px solid var(--light-gray);
+  border-top: none;
+  border-radius: 0 0 var(--radius-xs) var(--radius-xs);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-decoration: none;
+  transition: all 0.3s;
+}
+.map-open-link:hover { background: var(--amber-pale); color: var(--amber); border-color: var(--amber-border); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────── */
+@media (max-width: 1100px) {
+  section { padding: 80px 40px; }
+  nav, nav.scrolled { padding-left: 32px; padding-right: 32px; }
+  footer { padding: 60px 40px; }
+  .why-grid { grid-template-columns: repeat(3,1fr); }
+  .gallery-grid { grid-template-columns: repeat(3,1fr); }
+  .g-item:nth-child(1) { grid-column: span 2; }
+}
+@media (max-width: 900px) {
+  .nav-links, .nav-cta { display: none; }
+  .nav-hamburger { display: flex; }
+  #story { grid-template-columns: 1fr; gap: 40px; }
+  .story-badge { left: 10px; top: 10px; }
+  .birthday-inner { grid-template-columns: 1fr; gap: 36px; }
+  .celebration-grid { grid-template-columns: repeat(2,1fr); }
+  .why-grid { grid-template-columns: repeat(2,1fr); }
+  #about-strip { grid-template-columns: repeat(2,1fr); }
+  .strip-item { border-right: none; border-bottom: 1px solid var(--light-gray); }
+  .experience-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+  #contact { grid-template-columns: 1fr; gap: 40px; }
+  .footer-inner { grid-template-columns: 1fr; gap: 40px; }
+  .menu-category.active { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 640px) {
+  section { padding: 56px 16px !important; }
+  nav, nav.scrolled { padding: 14px 16px !important; }
+  footer { padding: 40px 16px !important; }
+  .hero-title { font-size: clamp(38px, 11vw, 56px) !important; }
+  .hero-subtitle { font-size: 14px !important; }
+  .celebration-grid { grid-template-columns: 1fr !important; }
+  .menu-category.active { grid-template-columns: 1fr !important; }
+  .why-grid { grid-template-columns: repeat(2,1fr) !important; }
+  .gallery-grid { grid-template-columns: repeat(2,1fr) !important; }
+  .g-item:nth-child(1), .g-item:nth-child(5) { grid-column: auto !important; grid-row: auto !important; }
+  .stats-grid { grid-template-columns: repeat(2,1fr) !important; }
+  .form-row { grid-template-columns: 1fr !important; }
+  .res-form { padding: 24px 16px !important; }
+  .story-features { grid-template-columns: 1fr !important; }
+  .birthday-offers { grid-template-columns: 1fr !important; }
+  .footer-inner { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .footer-bottom { flex-direction: column !important; text-align: center !important; }
+  .exp-quote { padding: 48px 20px !important; }
+
+  /* Floating badges bar — compact on mobile */
+  .floating-badges-bar { padding: 10px 12px; gap: 6px; }
+  .badge { font-size: 11px !important; padding: 6px 12px !important; }
+
+  /* About-strip — compact 2×2 on mobile */
+  #about-strip { grid-template-columns: repeat(2,1fr) !important; }
+  .strip-item { padding: 24px 16px !important; }
+  .strip-num { font-size: 36px !important; }
+  .strip-label { font-size: 9px !important; letter-spacing: 1px !important; }
+
+  .reviews-track { flex-direction: column !important; animation: none !important; width: 100% !important; }
+  .review-card { min-width: 100% !important; }
+  #order-links { padding: 56px 16px !important; }
+
+  /* Stats — 2 cols, compact */
+  #stats { padding: 40px 16px !important; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 20px !important; }
+  .stat-num { font-size: 36px !important; }
+  .stat-label { font-size: 9px !important; letter-spacing: 1.5px !important; }
+}
+
+/* Instagram float — sits above WhatsApp */
+.ig-float {
+  position: fixed;
+  bottom: 158px; right: 24px;
+  width: 56px; height: 56px;
+  background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: #fff;
+  text-decoration: none;
+  z-index: 500;
+  box-shadow: 0 8px 24px rgba(214,36,159,0.38);
+  transition: all 0.35s var(--ease);
+}
+.ig-float:hover { transform: scale(1.1) translateY(-3px); box-shadow: 0 16px 36px rgba(214,36,159,0.5); color: #fff; }
+
+/* ─── PRELOADER ───────────────────────────────────────── */
+#preloader {
+  position: fixed;
+  inset: 0;
+  background: var(--off-white);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  transition: opacity 0.6s var(--ease), visibility 0.6s var(--ease);
+}
+#preloader.done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.preloader-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--text-main);
+  letter-spacing: 1px;
+  opacity: 0;
+  animation: fadeUp 0.7s 0.2s var(--ease) forwards;
+}
+.preloader-logo .dot { color: var(--amber); }
+.preloader-logo .restro { font-weight: 400; font-style: italic; }
+.preloader-bar-wrap {
+  width: 200px;
+  height: 2px;
+  background: var(--light-gray);
+  border-radius: 2px;
+  overflow: hidden;
+  opacity: 0;
+  animation: fadeUp 0.5s 0.5s var(--ease) forwards;
+}
+.preloader-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--gradient-amber);
+  border-radius: 2px;
+  animation: loadBar 1.8s 0.6s var(--ease) forwards;
+}
+@keyframes loadBar { 0%{width:0%} 60%{width:75%} 85%{width:92%} 100%{width:100%} }
+.preloader-tagline {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+  opacity: 0;
+  animation: fadeUp 0.5s 0.7s var(--ease) forwards;
+}
+
+/* ─── GLOBAL OVERFLOW FIX ─────────────────────────────── */
+html { overflow-x: hidden; width: 100%; }
+body { overflow-x: hidden; max-width: 100%; width: 100%; position: relative; }
+section, nav, footer, #about-strip, .experience-grid, .exp-quote { max-width: 100vw; overflow: hidden; }
+
+/* ─── PHOSPHOR ICON STYLES ─────────────────────────────── */
+.ph { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.why-icon .ph { font-size: 36px !important; }
+.offer-icon .ph { font-size: 24px !important; }
+.contact-icon .ph { font-size: 20px !important; color: white; }
+.social-btn .ph { font-size: 18px !important; }
+.icon-float .ph, .wa-float .ph { font-size: 26px !important; }
+
+</style>
+</head>
+<body>
+
+<!-- PRELOADER -->
+<div id="preloader">
+  <div class="preloader-logo">C3<span class="dot">.</span><span class="restro">Restro</span></div>
+  <div class="preloader-bar-wrap">
+    <div class="preloader-bar"></div>
+  </div>
+  <span class="preloader-tagline">Pure Veg Fine Dining · Ujjain</span>
+</div>
+
+<!-- MOBILE MENU -->
+<div class="nav-mobile-menu" id="mobileMenu">
+  <button class="nav-mobile-close" onclick="closeMobileMenu()">✕</button>
+  <a href="#story" onclick="closeMobileMenu()">Our Story</a>
+  <a href="#menu" onclick="closeMobileMenu()">Menu</a>
+  <a href="#celebrations" onclick="closeMobileMenu()">Events</a>
+  <a href="#gallery" onclick="closeMobileMenu()">Gallery</a>
+  <a href="#order-links" onclick="closeMobileMenu()">Order Online</a>
+  <a href="#contact" onclick="closeMobileMenu()">Reserve</a>
+</div>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">C3<span class="dot">.</span><span class="restro">Restro</span></a>
+  <ul class="nav-links">
+    <li><a href="#story">Story</a></li>
+    <li><a href="#menu">Menu</a></li>
+    <li><a href="#celebrations">Events</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="#order-links">Order Online</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <a href="#contact" class="nav-cta"><i class="ph ph-calendar-check"></i> Book a Table</a>
+  <button class="nav-hamburger" onclick="openMobileMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg">
+    <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1600&q=80&auto=format&fit=crop" alt="C3 Restro Restaurant" fetchpriority="high" decoding="async">
+  </div>
+  <div class="hero-grain"></div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="dot-pulse"></span>
+      Pure Veg Fine Dining · Ujjain
+    </div>
+    <h1 class="hero-title">
+      Fine Dining,
+      <em>Pure Love</em>
+    </h1>
+    <p class="hero-subtitle">Ujjain's most celebrated pure-veg restaurant — where every table tells a story<br>of flavour, family, and unforgettable moments.</p>
+    <div class="hero-btns">
+      <a href="#contact" class="btn-primary"><i class="ph ph-calendar-check"></i> Reserve a Table</a>
+      <a href="#menu" class="btn-outline"><i class="ph ph-fork-knife"></i> Explore Menu</a>
+      <a href="#celebrations" class="btn-party"><i class="ph ph-confetti"></i> Host an Event</a>
+    </div>
+  </div>
+  <div class="scroll-indicator">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- FLOATING BADGES BAR -->
+<div class="floating-badges-bar">
+  <div class="badge">✦ Pure Vegetarian</div>
+  <div class="badge"><i class="ph ph-cake"></i> Birthday Setups</div>
+  <div class="badge"><i class="ph ph-heart"></i> Couple Dining</div>
+  <div class="badge"><i class="ph ph-buildings"></i> Corporate Events</div>
+  <div class="badge"><i class="ph ph-star"></i> 4.5 Rated</div>
+</div>
+
+<!-- ABOUT STRIP -->
+<div id="about-strip">
+  <div class="strip-item">
+    <span class="strip-num">5,000+</span>
+    <span class="strip-label">Happy Guests</span>
+  </div>
+  <div class="strip-item">
+    <span class="strip-num">500+</span>
+    <span class="strip-label">Events Hosted</span>
+  </div>
+  <div class="strip-item">
+    <span class="strip-num">45+</span>
+    <span class="strip-label">Menu Items</span>
+  </div>
+  <div class="strip-item">
+    <span class="strip-num">3+</span>
+    <span class="strip-label">Years of Excellence</span>
+  </div>
+</div>
+
+<!-- STORY -->
+<section id="story">
+  <div class="story-img-wrap reveal">
+    <img class="story-img" fetchpriority="high" decoding="async" src="https://lh3.googleusercontent.com/gps-cs-s/APNQkAEgCL9T27CyLm_ZCxKutSHgvgAkurChHqd0Z7c3T0uG7axh_TVsiniXajyk7_cpflidIJHnhaOsNhLAR5usd8BQEVohZX4RXeFaE8B5j6BXMm7PNdHH4Dltadp89Gig8ZD7WPCg5sQW5bew=s800-w800-h600-rw" alt="C3 Restro Interior">
+    <div class="story-badge">
+      <strong>100%</strong>
+      <span>Pure Veg</span>
+    </div>
+  </div>
+  <div class="reveal">
+    <span class="section-eyebrow">Our Story</span>
+    <h2 class="section-title">Where Every Meal Is A <em>Masterpiece</em></h2>
+    <div class="amber-line"></div>
+    <p class="section-sub">Nestled in the heart of Nagziri, Ujjain, C3 Restro Pure Veg was born from a passion for delivering not just food — but an unforgettable dining experience. From family celebrations to romantic couple dinners, we craft each visit as a luxury memory.</p>
+    <p class="section-sub" style="margin-top:16px">Our chefs blend traditional Indian flavors with modern presentation, creating dishes that delight the eyes before they satisfy the soul. Every corner of our space is curated for that perfect Instagram moment.</p>
+    <div class="story-features">
+      <div class="story-feat">100% Pure Vegetarian</div>
+      <div class="story-feat">Farm-Fresh Ingredients</div>
+      <div class="story-feat">Private Event Spaces</div>
+      <div class="story-feat">Personalized Décor</div>
+      <div class="story-feat">Hygienic Certified Kitchen</div>
+      <div class="story-feat">No Onion / No Garlic Options</div>
+    </div>
+  </div>
+</section>
+
+<!-- MENU -->
+<section id="menu">
+  <div class="menu-header">
+    <div class="reveal">
+      <span class="section-eyebrow">Our Menu</span>
+      <h2 class="section-title">Crafted With <em>Passion</em></h2>
+    </div>
+    <p class="section-sub reveal" style="margin:0">Every dish tells a story of tradition, innovation and love.</p>
+    <a href="https://c3restro.xo.je/" target="_blank" class="delivery-cta reveal">
+      <span class="delivery-cta-icon"><i class="ph ph-motorcycle"></i></span>
+      <span class="delivery-cta-text">
+        <strong>Order Online for Home Delivery</strong>
+        <span>Fresh from our kitchen · Fast delivery · c3restro.xo.je</span>
+      </span>
+      <span class="delivery-cta-arrow"><i class="ph ph-arrow-right"></i></span>
+    </a>
+  </div>
+
+  <div class="menu-tabs">
+    <button class="menu-tab active" onclick="switchTab('starters',this)"><i class="ph ph-salad"></i> Starters</button>
+    <button class="menu-tab" onclick="switchTab('main',this)"><i class="ph ph-bowl-food"></i> Main Course</button>
+    <button class="menu-tab" onclick="switchTab('chinese',this)"><i class="ph ph-noodle"></i> Chinese</button>
+    <button class="menu-tab" onclick="switchTab('breads',this)"><i class="ph ph-bread"></i> Breads</button>
+    <button class="menu-tab" onclick="switchTab('pizza',this)"><i class="ph ph-pizza"></i> Pizza</button>
+    <button class="menu-tab" onclick="switchTab('thali',this)"><i class="ph ph-tray"></i> Thali</button>
+  </div>
+
+  <!-- STARTERS -->
+  <div class="menu-category active" id="cat-starters">
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=600&q=80&auto=format&fit=crop" alt="Baati">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-star"></i> Signature</span>
+        <div class="food-name"><span class="veg-dot"></span>Dal Baati Churma</div>
+        <div class="food-desc">Traditional Rajasthani baati in pure ghee served with churma and dal. A royal indulgence.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&q=80&auto=format&fit=crop" alt="Uttapam">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-leaf"></i> Healthy Pick</span>
+        <div class="food-name"><span class="veg-dot"></span>Masala Uttapam</div>
+        <div class="food-desc">Crispy rice & lentil pancake topped with fresh veggies, served with coconut chutney & sambar.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&q=80&auto=format&fit=crop" alt="Thali Starter">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-fire"></i> Best Seller</span>
+        <div class="food-name"><span class="veg-dot"></span>Welcome Platter</div>
+        <div class="food-desc">An assortment of our finest starters — dal baati, kachori, raita, and seasonal chutney.</div>
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN COURSE -->
+  <div class="menu-category" id="cat-main">
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=600&q=80&auto=format&fit=crop" alt="Roti">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-heart"></i> Comfort Food</span>
+        <div class="food-name"><span class="veg-dot"></span>Missi Roti Combo</div>
+        <div class="food-desc">Besan-atta flatbread with achar, raita, and seasonal sabzi. Homestyle perfection.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&q=80&auto=format&fit=crop" alt="Thali">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-crown"></i> Chef Special</span>
+        <div class="food-name"><span class="veg-dot"></span>C3 Grand Thali</div>
+        <div class="food-desc">4 sabzis, dal, rice, naan, raita, salad, papad, pickle and gulab jamun. Premium experience.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=600&q=80&auto=format&fit=crop" alt="Rajasthani">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-fire"></i> Best Seller</span>
+        <div class="food-name"><span class="veg-dot"></span>Royal Rajasthani Thali</div>
+        <div class="food-desc">Dal baati churma, gatte ki sabzi, bajra roti, raita and dessert. Complete feast.</div>
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- CHINESE -->
+  <div class="menu-category" id="cat-chinese">
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://t4.ftcdn.net/jpg/02/75/39/23/360_F_275392381_9upAWW5Rdsa4UE0CV6gRu2CwUETjzbKy.jpg" alt="Chinese Bowl">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-pepper"></i> Spicy Hit</span>
+        <div class="food-name"><span class="veg-dot"></span>Manchurian Noodle Bowl</div>
+        <div class="food-desc">Crispy veggie manchurian tossed in schezwan sauce with egg-fried noodles and lime.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&q=80&auto=format&fit=crop" alt="Noodles">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-star"></i> Fan Favourite</span>
+        <div class="food-name"><span class="veg-dot"></span>Schezwan Noodles</div>
+        <div class="food-desc">Wok-tossed noodles in fiery schezwan sauce with crunchy veggies and spring onion.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://t4.ftcdn.net/jpg/02/75/39/23/360_F_275392381_9upAWW5Rdsa4UE0CV6gRu2CwUETjzbKy.jpg" alt="Chinese Platter">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-sparkle"></i> C3 Special</span>
+        <div class="food-name"><span class="veg-dot"></span>Indo-Chinese Platter</div>
+        <div class="food-desc">Chilli paneer, fried rice, veg momos with garlic dip. A complete Indo-Chinese feast.</div>
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- BREADS -->
+  <div class="menu-category" id="cat-breads">
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=600&q=80&auto=format&fit=crop" alt="Missi Roti">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-leaf"></i> Traditional</span>
+        <div class="food-name"><span class="veg-dot"></span>Missi Roti (4 pcs)</div>
+        <div class="food-desc">Classic besan-atta flatbread, freshly tawa-roasted with butter. Perfect with any sabzi.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&q=80&auto=format&fit=crop" alt="Paratha">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-heart"></i> Most Loved</span>
+        <div class="food-name"><span class="veg-dot"></span>Aloo Stuffed Paratha</div>
+        <div class="food-desc">Thick whole-wheat paratha stuffed with spiced potato, served with white butter and curd.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=600&q=80&auto=format&fit=crop" alt="Baati Roti">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-fire"></i> Signature</span>
+        <div class="food-name"><span class="veg-dot"></span>Tandoori Naan Basket</div>
+        <div class="food-desc">Assorted naans — plain, garlic, butter — from a traditional tandoor oven.</div>
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- PIZZA -->
+  <div class="menu-category" id="cat-pizza">
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80&auto=format&fit=crop" alt="Corn Pizza">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-sun"></i> Fresh & Light</span>
+        <div class="food-name"><span class="veg-dot"></span>Corn & Basil Pizza</div>
+        <div class="food-desc">Sweet corn, fresh basil, mozzarella on a crispy base with house tomato sauce.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?w=600&q=80&auto=format&fit=crop" alt="Loaded Pizza">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-crown"></i> House Special</span>
+        <div class="food-name"><span class="veg-dot"></span>C3 Loaded Veg Pizza</div>
+        <div class="food-desc">Bell peppers, corn, paneer, onion and extra cheese on a thick golden crust.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80&auto=format&fit=crop" alt="Pizza">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-fire"></i> Best Seller</span>
+        <div class="food-name"><span class="veg-dot"></span>Margherita Classic</div>
+        <div class="food-desc">Simple, pure, and delicious. Fresh mozzarella, basil, and our signature tomato base.</div>
+        
+      </div>
+    </div>
+  </div>
+
+  <!-- THALI -->
+  <div class="menu-category" id="cat-thali">
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&q=80&auto=format&fit=crop" alt="Thali">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-fire"></i> Best Seller</span>
+        <div class="food-name"><span class="veg-dot"></span>Royal Rajasthani Thali</div>
+        <div class="food-desc">Dal baati churma, gatte ki sabzi, bajra roti, raita and dessert. Complete feast.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&q=80&auto=format&fit=crop" alt="Grand Thali">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-crown"></i> Chef Special</span>
+        <div class="food-name"><span class="veg-dot"></span>C3 Grand Thali</div>
+        <div class="food-desc">4 sabzis, dal, rice, naan, raita, salad, papad, pickle and gulab jamun.</div>
+        
+      </div>
+    </div>
+    <div class="food-card reveal">
+      <img class="food-img" loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&q=80&auto=format&fit=crop" alt="Family Thali">
+      <div class="food-info">
+        <span class="food-tag"><i class="ph ph-heart"></i> Family Favourite</span>
+        <div class="food-name"><span class="veg-dot"></span>Family Meal Box</div>
+        <div class="food-desc">For 4 people — 2 gravies, dal, 8 rotis, rice, salad, dessert. Best value.</div>
+        
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CELEBRATIONS -->
+<section id="celebrations">
+  <div class="celebrations-header reveal">
+    <span class="section-eyebrow">✦ Private Events ✦</span>
+    <h2 class="section-title">Turn Your Special Moments Into<br><em>Luxury Memories</em></h2>
+    <div class="amber-line" style="margin:16px auto"></div>
+    <p class="section-sub">Every celebration deserves a stage worthy of the moment. We handle everything so you just arrive and cherish.</p>
+  </div>
+  <div class="celebration-grid">
+    <div class="celebration-card reveal">
+      <img class="celebration-img" loading="lazy" decoding="async" src="https://m.media-amazon.com/images/I/61BfUChP5OL._AC_UF1000,1000_QL80_.jpg" alt="Birthday">
+      <div class="celebration-body">
+        <div class="celebration-name"><i class="ph ph-cake"></i> Birthday Celebration</div>
+        <div class="celebration-details">Balloon arch · Cake table · Custom décor · Birthday song setup · Complimentary mocktail</div>
+        
+        <a href="#contact" class="btn-book">Book Now →</a>
+      </div>
+    </div>
+    <div class="celebration-card reveal">
+      <img class="celebration-img" loading="lazy" decoding="async" src="https://media.istockphoto.com/id/506823516/photo/couple-enjoying-a-romantic-dinner-by-candlelight.jpg?s=612x612&w=0&k=20&c=oqF5We7gsVns2IJTphUEEuub_SjyoARs2zwxcng6zVU=" alt="Anniversary">
+      <div class="celebration-body">
+        <div class="celebration-name"><i class="ph ph-heart"></i> Anniversary Dinner</div>
+        <div class="celebration-details">Candle light setup · Rose petals · Private table · Couple mocktails · Photography corner</div>
+        
+        <a href="#contact" class="btn-book">Book Now →</a>
+      </div>
+    </div>
+    <div class="celebration-card reveal">
+      <img class="celebration-img" loading="lazy" decoding="async" src="https://swagath.in/wp-content/uploads/2026/02/Family-Get-Togethers-Matter.webp" alt="Family">
+      <div class="celebration-body">
+        <div class="celebration-name"><i class="ph ph-users-three"></i> Family Get Together</div>
+        <div class="celebration-details">Group seating · Special menu · Welcome drinks · Buffet options · Dedicated host</div>
+        
+        <a href="#contact" class="btn-book">Book Now →</a>
+      </div>
+    </div>
+    <div class="celebration-card reveal">
+      <img class="celebration-img" loading="lazy" decoding="async" src="https://miro.medium.com/1*lWPwm89x0jRMjITRYP5cFA.jpeg" alt="Corporate">
+      <div class="celebration-body">
+        <div class="celebration-name"><i class="ph ph-briefcase"></i> Corporate Dinner</div>
+        <div class="celebration-details">Private hall · AV setup · Business menu · Welcome kits · Dedicated service team</div>
+        
+        <a href="#contact" class="btn-book">Book Now →</a>
+      </div>
+    </div>
+    <div class="celebration-card reveal">
+      <img class="celebration-img" loading="lazy" decoding="async" src="https://5.imimg.com/data5/SU/PJ/DP/SELLER-9460739/kitty-party-service.png" alt="Kitty Party">
+      <div class="celebration-body">
+        <div class="celebration-name"><i class="ph ph-crown"></i> Kitty Party</div>
+        <div class="celebration-details">Decorated table · Games setup · Special mocktail menu · Group photography · Snack platters</div>
+        
+        <a href="#contact" class="btn-book">Book Now →</a>
+      </div>
+    </div>
+    <div class="celebration-card reveal">
+      <img class="celebration-img" loading="lazy" decoding="async" src="https://media.ahmedabadmirror.com/am/uploads/mediaGallery/image/1753648265681.jpg-org" alt="College Party">
+      <div class="celebration-body">
+        <div class="celebration-name"><i class="ph ph-graduation-cap"></i> Freshers & College Party</div>
+        <div class="celebration-details">DJ music option · Special student packages · Group discounts · Games area · Selfie spots</div>
+        
+        <a href="#contact" class="btn-book">Book Now →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BIRTHDAY SPECIAL -->
+<section id="birthday">
+  <div class="birthday-inner">
+    <div class="birthday-imgs reveal">
+      <img class="bday-img" loading="lazy" decoding="async" src="https://lh3.googleusercontent.com/gps-cs-s/APNQkAHF42bW2eVyhb5dUdapzCFmSNl7XIwggXHqnox_abyxJy4nqZep-5RISARBRHE6PBL1xCN3gpRSRXleqRbnUNM7volEDlIGd-R5kZJEW-sMI0ms08u1VzkpTo0v2tHFmdVR4bI2St_HxCE=s800-w800-h600-rw" alt="Birthday Setup">
+      <img class="bday-img" loading="lazy" decoding="async" src="https://lh3.googleusercontent.com/gps-cs-s/APNQkAEgCL9T27CyLm_ZCxKutSHgvgAkurChHqd0Z7c3T0uG7axh_TVsiniXajyk7_cpflidIJHnhaOsNhLAR5usd8BQEVohZX4RXeFaE8B5j6BXMm7PNdHH4Dltadp89Gig8ZD7WPCg5sQW5bew=s800-w800-h600-rw" alt="Birthday Cake">
+      <img class="bday-img" loading="lazy" decoding="async" src="https://lh3.googleusercontent.com/gps-cs-s/APNQkAGT4-dcIwJJzV3x47aB8SMFKqX0BJJtB09m91H63eGFT-2cihtxHbfzAWPNP3Db0TgWvX3Zj7M0ADLcpNGadDvUM2Saa2YZ8out3LVNPrIpWiROG6oEXA9vvJwzBMu8NmQEe9xY_Xsf7O7g=s800-w800-h600-rw" alt="Celebration">
+    </div>
+    <div class="reveal">
+      <span class="section-eyebrow"><i class="ph ph-cake"></i> Birthday Special</span>
+      <h2 class="section-title">Make Their Day <em>Unforgettable</em></h2>
+      <div class="amber-line"></div>
+      <p class="section-sub">From surprise setups to grand celebrations — we design every birthday as a cinematic moment worth remembering forever.</p>
+      <div class="birthday-offers">
+        <div class="offer-item"><span class="offer-icon"><i class="ph ph-music-notes"></i></span>Free Birthday Song Setup with staff performance</div>
+        <div class="offer-item"><span class="offer-icon"><i class="ph ph-wine"></i></span>Complimentary Mocktail for the birthday person</div>
+        <div class="offer-item"><span class="offer-icon"><i class="ph ph-balloon"></i></span>Balloon arch, flower décor, candle table</div>
+        <div class="offer-item"><span class="offer-icon"><i class="ph ph-camera"></i></span>Selfie corner with LED frame & neon signage</div>
+        <div class="offer-item"><span class="offer-icon"><i class="ph ph-cake"></i></span>Cake arrangement & surprise reveal setup</div>
+        <div class="offer-item"><span class="offer-icon"><i class="ph ph-sparkle"></i></span>Customised banner with name & photo</div>
+      </div>
+      <div class="slots-badge"><i class="ph ph-calendar-check" style="font-size:13px;vertical-align:middle"></i> Limited birthday slots available per day — book early!</div>
+      <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap">
+        <a href="https://wa.link/d5d4vi" target="_blank" class="btn-primary"><i class="ph ph-whatsapp-logo"></i> Book on WhatsApp</a>
+        <a href="tel:+919202420684" class="btn-outline"><i class="ph ph-phone"></i> Call Now</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section id="gallery">
+  <div class="gallery-header reveal">
+    <span class="section-eyebrow">Visual Story</span>
+    <h2 class="section-title">Every Corner Designed To Be<br><em>Instagram Worthy</em></h2>
+  </div>
+  <div class="gallery-grid reveal">
+    <div class="g-item">
+      <img src="https://lh3.googleusercontent.com/gps-cs-s/APNQkAHF42bW2eVyhb5dUdapzCFmSNl7XIwggXHqnox_abyxJy4nqZep-5RISARBRHE6PBL1xCN3gpRSRXleqRbnUNM7volEDlIGd-R5kZJEW-sMI0ms08u1VzkpTo0v2tHFmdVR4bI2St_HxCE=s800-w800-h600-rw" alt="C3 Restro">
+      <div class="g-overlay"><span class="g-label">C3 Restro Exterior</span></div>
+    </div>
+    <div class="g-item">
+      <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=600&q=80&auto=format&fit=crop" alt="Dal Baati">
+      <div class="g-overlay"><span class="g-label">Signature Dish</span></div>
+    </div>
+    <div class="g-item">
+      <img src="https://t4.ftcdn.net/jpg/02/75/39/23/360_F_275392381_9upAWW5Rdsa4UE0CV6gRu2CwUETjzbKy.jpg" alt="Chinese Platter">
+      <div class="g-overlay"><span class="g-label">Chinese Platter</span></div>
+    </div>
+    <div class="g-item">
+      <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&q=80&auto=format&fit=crop" alt="Uttapam">
+      <div class="g-overlay"><span class="g-label">South Special</span></div>
+    </div>
+    <div class="g-item">
+      <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80&auto=format&fit=crop" alt="Pizza">
+      <div class="g-overlay"><span class="g-label">Wood-Fired Pizza</span></div>
+    </div>
+    <div class="g-item">
+      <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&q=80&auto=format&fit=crop" alt="Noodles">
+      <div class="g-overlay"><span class="g-label">Schezwan Noodles</span></div>
+    </div>
+    <div class="g-item">
+      <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=600&q=80&auto=format&fit=crop" alt="Roti">
+      <div class="g-overlay"><span class="g-label">Fresh Breads</span></div>
+    </div>
+    <div class="g-item">
+      <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?w=600&q=80&auto=format&fit=crop" alt="Veg Pizza">
+      <div class="g-overlay"><span class="g-label">Loaded Pizza</span></div>
+    </div>
+    <div class="g-item">
+      <img src="https://lh3.googleusercontent.com/gps-cs-s/APNQkAEgCL9T27CyLm_ZCxKutSHgvgAkurChHqd0Z7c3T0uG7axh_TVsiniXajyk7_cpflidIJHnhaOsNhLAR5usd8BQEVohZX4RXeFaE8B5j6BXMm7PNdHH4Dltadp89Gig8ZD7WPCg5sQW5bew=s800-w800-h600-rw" alt="Restaurant">
+      <div class="g-overlay"><span class="g-label">Our Restaurant</span></div>
+    </div>
+    <div class="g-item">
+      <img loading="lazy" decoding="async" src="https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&q=80&auto=format&fit=crop" alt="Thali">
+      <div class="g-overlay"><span class="g-label">Grand Thali</span></div>
+    </div>
+  </div>
+  <p class="gallery-insta reveal">Follow us on Instagram <a href="https://instagram.com/c3restro" target="_blank">@c3restro</a> for daily food stories ✨</p>
+</section>
+
+<!-- WHY US -->
+<section id="why">
+  <div class="why-header reveal">
+    <span class="section-eyebrow">Why C3 Restro</span>
+    <h2 class="section-title">Why People <em>Love</em> Us</h2>
+  </div>
+  <div class="why-grid">
+    <div class="why-card reveal">
+      <span class="why-icon"><i class="ph ph-leaf"></i></span>
+      <div class="why-name">100% Pure Veg</div>
+      <div class="why-desc">Strictly vegetarian kitchen with no compromise on purity — ever.</div>
+    </div>
+    <div class="why-card reveal">
+      <span class="why-icon"><i class="ph ph-confetti"></i></span>
+      <div class="why-name">Event Specialists</div>
+      <div class="why-desc">500+ events hosted with themed décor, personal hosts and memory-making moments.</div>
+    </div>
+    <div class="why-card reveal">
+      <span class="why-icon"><i class="ph ph-chef-hat"></i></span>
+      <div class="why-name">Master Chefs</div>
+      <div class="why-desc">Chefs trained in traditional Indian and fusion cuisines, delivering consistency every time.</div>
+    </div>
+    <div class="why-card reveal">
+      <span class="why-icon"><i class="ph ph-star"></i></span>
+      <div class="why-name">4.5★ Google Rated</div>
+      <div class="why-desc">Loved by thousands of guests with stellar reviews on Google & our website.</div>
+    </div>
+    <div class="why-card reveal">
+      <span class="why-icon"><i class="ph ph-map-pin"></i></span>
+      <div class="why-name">Prime Location</div>
+      <div class="why-desc">Easily accessible in Nagziri, Ujjain with ample parking and a welcoming ambience.</div>
+    </div>
+  </div>
+</section>
+
+<!-- EXPERIENCE -->
+<section id="experience" style="padding:0">
+  <div class="experience-grid">
+    <div class="exp-item">
+      <div class="exp-num">01</div>
+      <div class="exp-content">
+        <span class="exp-tag">Dining Space</span>
+        <div class="exp-title">Intimate & Instagram-Worthy</div>
+        <div class="exp-desc">Every corner of C3 Restro is designed for beautiful memories — warm lights, curated décor, and spaces that feel both intimate and vibrant.</div>
+      </div>
+    </div>
+    <div class="exp-item">
+      <div class="exp-num">02</div>
+      <div class="exp-content">
+        <span class="exp-tag">The Flavours</span>
+        <div class="exp-title">Tradition Meets Innovation</div>
+        <div class="exp-desc">From rustic Rajasthani to contemporary Indo-Chinese — our menu bridges generations of taste with modern plating and fresh ingredients.</div>
+      </div>
+    </div>
+    <div class="exp-item">
+      <div class="exp-num">03</div>
+      <div class="exp-content">
+        <span class="exp-tag">Events</span>
+        <div class="exp-title">Celebrations Done Right</div>
+        <div class="exp-desc">Our team transforms any occasion into a cherished memory — from intimate couple dinners to 50-person family gatherings. Every detail handled.</div>
+      </div>
+    </div>
+  </div>
+  <div class="exp-quote">
+    <blockquote>"Not just a restaurant — it's where <em>Ujjain comes to celebrate</em>, every single day."</blockquote>
+  </div>
+</section>
+
+<!-- STATS -->
+<section id="stats">
+  <div class="stats-grid">
+    <div class="reveal">
+      <span class="stat-num">5,000+</span>
+      <span class="stat-label">Happy Guests</span>
+    </div>
+    <div class="reveal">
+      <span class="stat-num">500+</span>
+      <span class="stat-label">Events Hosted</span>
+    </div>
+    <div class="reveal">
+      <span class="stat-num">4.5</span>
+      <span class="stat-label">Google Rating</span>
+    </div>
+    <div class="reveal">
+      <span class="stat-num">45+</span>
+      <span class="stat-label">Menu Items</span>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section id="reviews">
+  <div class="reviews-header reveal">
+    <span class="section-eyebrow">Testimonials</span>
+    <h2 class="section-title">What Our Guests <em>Say</em></h2>
+  </div>
+  <div class="reviews-track-wrap">
+    <div class="reviews-track">
+      <!-- Set 1 -->
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">Best pure veg restaurant in Ujjain, hands down. The Dal Baati Churma is an absolute must-try. We celebrated our anniversary here and the setup was just magical.</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">P</div>
+          <div><div class="reviewer-name">Priya Sharma</div><div class="reviewer-sub">Google Review · Anniversary Dinner</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">Hosted my daughter's birthday party here. The decoration team was phenomenal — balloon arch, LED frame, the whole setup. Kids loved it and the food was equally amazing!</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">R</div>
+          <div><div class="reviewer-name">Rakesh Gupta</div><div class="reviewer-sub">Google Review · Birthday Party</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">The Grand Thali is an experience in itself. So many dishes, all freshly made and piping hot. Staff is incredibly attentive. This is my go-to for family dinners in Ujjain.</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">S</div>
+          <div><div class="reviewer-name">Sunita Agarwal</div><div class="reviewer-sub">Google Review · Family Dining</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">Came for our college fresher's party and wow — perfect venue! The food, the music vibe, the décor. Very budget friendly for group bookings. Highly recommend for college events!</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">A</div>
+          <div><div class="reviewer-name">Aryan Joshi</div><div class="reviewer-sub">Google Review · College Party</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">The pizza and Chinese here is surprisingly good for a pure veg place. The schezwan noodles are better than most dedicated Chinese restaurants. Great place for casual dining too.</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">M</div>
+          <div><div class="reviewer-name">Meera Patel</div><div class="reviewer-sub">Google Review · Casual Dining</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">Kitty party organised here last month. The team took care of everything — games, décor, personalised menu. All 15 ladies had an absolute blast. Will definitely return!</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">K</div>
+          <div><div class="reviewer-name">Kavita Malhotra</div><div class="reviewer-sub">Google Review · Kitty Party</div></div>
+        </div>
+      </div>
+      <!-- Duplicate for infinite scroll -->
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">Best pure veg restaurant in Ujjain, hands down. The Dal Baati Churma is an absolute must-try. We celebrated our anniversary here and the setup was just magical.</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">P</div>
+          <div><div class="reviewer-name">Priya Sharma</div><div class="reviewer-sub">Google Review · Anniversary Dinner</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">Hosted my daughter's birthday party here. The decoration team was phenomenal — balloon arch, LED frame, the whole setup. Kids loved it and the food was equally amazing!</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">R</div>
+          <div><div class="reviewer-name">Rakesh Gupta</div><div class="reviewer-sub">Google Review · Birthday Party</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">The Grand Thali is an experience in itself. So many dishes, all freshly made and piping hot. Staff is incredibly attentive. This is my go-to for family dinners in Ujjain.</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">S</div>
+          <div><div class="reviewer-name">Sunita Agarwal</div><div class="reviewer-sub">Google Review · Family Dining</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">Came for our college fresher's party and wow — perfect venue! The food, the music vibe, the décor. Very budget friendly for group bookings. Highly recommend for college events!</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">A</div>
+          <div><div class="reviewer-name">Aryan Joshi</div><div class="reviewer-sub">Google Review · College Party</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">The pizza and Chinese here is surprisingly good for a pure veg place. The schezwan noodles are better than most dedicated Chinese restaurants. Great place for casual dining too.</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">M</div>
+          <div><div class="reviewer-name">Meera Patel</div><div class="reviewer-sub">Google Review · Casual Dining</div></div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-text">Kitty party organised here last month. The team took care of everything — games, décor, personalised menu. All 15 ladies had an absolute blast. Will definitely return!</div>
+        <div class="reviewer">
+          <div class="reviewer-avatar">K</div>
+          <div><div class="reviewer-name">Kavita Malhotra</div><div class="reviewer-sub">Google Review · Kitty Party</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ORDER ONLINE / LINKS -->
+<section id="order-links">
+  <div class="order-links-inner">
+    <div class="reveal">
+      <span class="section-eyebrow">Find Us Everywhere</span>
+      <h2 class="section-title">Order Online or <em>Connect With Us</em></h2>
+      <div class="amber-line" style="margin:16px auto"></div>
+      <p class="section-sub" style="margin:0 auto">Order fresh food delivered to your door or connect with us on your favourite platform.</p>
+    </div>
+    <div class="order-links-grid reveal">
+      <a href="https://c3restro.xo.je/" target="_blank" class="order-link-btn order-btn-order"><i class="ph ph-storefront"></i> Order Online</a>
+      <a href="https://wa.link/d5d4vi" target="_blank" class="order-link-btn order-btn-wa"><i class="ph ph-whatsapp-logo"></i> Chat on WhatsApp</a>
+      <a href="https://instagram.com/c3restro" target="_blank" class="order-link-btn order-btn-insta"><i class="ph ph-instagram-logo"></i> Follow on Instagram</a>
+      <a href="https://maps.app.goo.gl/xfQUREiff8aqaquM8" target="_blank" class="order-link-btn order-btn-gmaps"><i class="ph ph-map-pin"></i> View on Google Maps</a>
+      <a href="https://linktr.ee/c3_restro" target="_blank" class="order-link-btn order-btn-linktree"><i class="ph ph-link"></i> All Our Links</a>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="contact-info reveal">
+    <span class="section-eyebrow">Visit Us</span>
+    <h2 class="section-title">Come, Experience<br><em>The Difference</em></h2>
+    <div class="contact-details">
+      <div class="contact-item">
+        <div class="contact-icon"><i class="ph ph-map-pin"></i></div>
+        <div class="contact-text">
+          <strong>Location</strong>
+          <span>Nagziri, Near Pawapuri Colony, Ujjain – 456664<br>Madhya Pradesh, India</span>
+        </div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-icon"><i class="ph ph-phone"></i></div>
+        <div class="contact-text">
+          <strong>Phone</strong>
+          <span><a href="tel:+919202420684" style="color:inherit;text-decoration:none">+91 92024 20684</a></span>
+        </div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-icon"><i class="ph ph-clock"></i></div>
+        <div class="contact-text">
+          <strong>Hours</strong>
+          <span>Mon – Sun: 10:00 AM – 11:00 PM<br>Events: Pre-booking required</span>
+        </div>
+      </div>
+      <div class="contact-item">
+        <div class="contact-icon"><i class="ph ph-instagram-logo"></i></div>
+        <div class="contact-text">
+          <strong>Social</strong>
+          <span><a href="https://instagram.com/c3restro" target="_blank" style="color:var(--amber);text-decoration:none">@c3restro</a> on Instagram</span>
+        </div>
+      </div>
+    </div>
+    <div class="contact-actions">
+      <a href="tel:+919202420684" class="btn-call"><i class="ph ph-phone"></i> Call Now</a>
+      <a href="https://wa.link/d5d4vi" class="btn-wa" target="_blank"><i class="ph ph-whatsapp-logo"></i> WhatsApp</a>
+    </div>
+    <div class="contact-actions" style="margin-top:12px">
+      <a href="https://c3restro.xo.je/" target="_blank" class="btn-call" style="background:linear-gradient(135deg,var(--amber),#b87320);color:#fff;border:none"><i class="ph ph-storefront"></i> Order Online</a>
+    </div>
+    <div class="map-wrap">
+      <iframe
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3668.1!2d75.7865!3d23.1820!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3963702b3b3b3b3b%3A0x3b3b3b3b3b3b3b3b!2sC3%20Restro!5e0!3m2!1sen!2sin!4v1699999999999"
+        width="100%" height="220"
+        style="border:0;display:block;"
+        allowfullscreen="" loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade">
+      </iframe>
+      <a href="https://maps.app.goo.gl/xfQUREiff8aqaquM8" target="_blank" class="map-open-link"><i class="ph ph-arrow-square-out"></i> Open in Google Maps</a>
+    </div>
+  </div>
+
+  <div class="res-form reveal">
+    <h3>Reserve Your Table</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label>Phone Number</label>
+        <input type="tel" placeholder="+91 92024 20684">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date">
+      </div>
+      <div class="form-group">
+        <label>Time</label>
+        <input type="time">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Number of Guests</label>
+        <select>
+          <option>1 – 2 People</option>
+          <option>3 – 5 People</option>
+          <option>6 – 10 People</option>
+          <option>11 – 20 People</option>
+          <option>20+ People</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Occasion</label>
+        <select>
+          <option>Regular Dining</option>
+          <option>Birthday Party</option>
+          <option>Anniversary</option>
+          <option>Family Gathering</option>
+          <option>Corporate Dinner</option>
+          <option>Kitty Party</option>
+          <option>College Party</option>
+          <option>Couple Candle Light</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Special Requests</label>
+      <textarea placeholder="Any special decoration, dietary needs or requests..."></textarea>
+    </div>
+    <button class="btn-submit" onclick="handleSubmit(this)">✦ Confirm Reservation via WhatsApp</button>
+    <p style="font-size:12px;color:var(--text-muted);margin-top:14px;text-align:center">Your details will be sent directly to us on WhatsApp for instant confirmation.</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="#" class="nav-logo">C3<span class="dot">.</span><span class="restro">Restro</span></a>
+      <p>Pure Veg Fine Dining in the heart of Ujjain. Crafting memories, one meal at a time. Where every table tells a story.</p>
+      <div class="footer-social">
+        <a class="social-btn" href="https://www.instagram.com/c3restro" title="Instagram" target="_blank"><i class="ph ph-instagram-logo"></i></a>
+        <a class="social-btn" href="https://wa.link/d5d4vi" title="WhatsApp" target="_blank"><i class="ph ph-whatsapp-logo"></i></a>
+        <a class="social-btn" href="https://maps.app.goo.gl/xfQUREiff8aqaquM8" title="Google Maps" target="_blank"><i class="ph ph-map-pin"></i></a>
+        <a class="social-btn" href="https://linktr.ee/c3_restro" title="Linktree" target="_blank"><i class="ph ph-link"></i></a>
+      </div>
+    </div>
+    <div class="footer-links">
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a href="#story">About C3 Restro</a></li>
+        <li><a href="#menu">Our Menu</a></li>
+        <li><a href="#celebrations">Celebrations</a></li>
+        <li><a href="#birthday">Birthday Booking</a></li>
+        <li><a href="#gallery">Gallery</a></li>
+        <li><a href="#contact">Contact Us</a></li>
+      </ul>
+    </div>
+    <div class="footer-links">
+      <h4>Events</h4>
+      <ul>
+        <li><a href="#celebrations">Birthday Parties</a></li>
+        <li><a href="#celebrations">Anniversary Dinner</a></li>
+        <li><a href="#celebrations">Kitty Party</a></li>
+        <li><a href="#celebrations">Corporate Events</a></li>
+        <li><a href="#celebrations">Family Gatherings</a></li>
+        <li><a href="#celebrations">College Parties</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 C3 Restro Pure Veg. All rights reserved. Nagziri, Ujjain – 456664, Madhya Pradesh.</span>
+    <span>Best Veg Restaurant in Ujjain · Pure Veg Fine Dining · Birthday Party Restaurant Ujjain</span>
+  </div>
+  <div class="footer-watermark">
+    Designed & Built by <a href="http://nexora-scale.unaux.com/" target="_blank" rel="noopener">Nexora Scale</a>
+  </div>
+</footer>
+
+<!-- FLOATING BUTTONS -->
+<a href="https://c3restro.xo.je/" class="order-float" target="_blank" title="Order Online"><i class="ph ph-storefront"></i> Order Online</a>
+<a href="https://www.instagram.com/c3restro" class="ig-float" target="_blank" title="Follow us on Instagram"><i class="ph ph-instagram-logo"></i></a>
+<a href="https://wa.link/d5d4vi" class="wa-float" target="_blank" title="WhatsApp Us"><i class="ph ph-whatsapp-logo"></i></a>
+
+<script>
+// PRELOADER — hide after bar animation completes, don't wait for all images
+(function() {
+  function hidePreloader() {
+    var el = document.getElementById('preloader');
+    if (el) el.classList.add('done');
+  }
+  // Hide after 2.6s guaranteed (bar animation = 1.8s + 0.6s delay + buffer)
+  var timer = setTimeout(hidePreloader, 2600);
+  // Also hide as soon as DOM + fonts are ready if faster
+  document.addEventListener('DOMContentLoaded', function() {
+    clearTimeout(timer);
+    setTimeout(hidePreloader, 2200);
+  });
+})();
+
+// NAV SCROLL
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 60);
+});
+
+// MOBILE MENU
+function openMobileMenu() {
+  document.getElementById('mobileMenu').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeMobileMenu() {
+  document.getElementById('mobileMenu').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// REVEAL ON SCROLL
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 60);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// MENU TABS
+function switchTab(cat, btn) {
+  document.querySelectorAll('.menu-category').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
+  const target = document.getElementById('cat-' + cat);
+  if (target) target.classList.add('active');
+  btn.classList.add('active');
+}
+
+// FORM SUBMIT → WhatsApp
+function handleSubmit(btn) {
+  const form = btn.closest('.res-form');
+  const inputs = form.querySelectorAll('input, select, textarea');
+  const name     = inputs[0].value.trim();
+  const phone    = inputs[1].value.trim();
+  const date     = inputs[2].value;
+  const time     = inputs[3].value;
+  const guests   = inputs[4].value;
+  const occasion = inputs[5].value;
+  const special  = inputs[6].value.trim();
+
+  if (!name || !phone || !date || !time) {
+    inputs[0].style.borderColor = name  ? '' : 'var(--terracotta)';
+    inputs[1].style.borderColor = phone ? '' : 'var(--terracotta)';
+    inputs[2].style.borderColor = date  ? '' : 'var(--terracotta)';
+    inputs[3].style.borderColor = time  ? '' : 'var(--terracotta)';
+    return;
+  }
+
+  const msg = encodeURIComponent(
+    `🍽️ *Table Reservation – C3 Restro*\n\n` +
+    `👤 Name: ${name}\n` +
+    `📞 Phone: ${phone}\n` +
+    `📅 Date: ${date}\n` +
+    `⏰ Time: ${time}\n` +
+    `👥 Guests: ${guests}\n` +
+    `🎉 Occasion: ${occasion}\n` +
+    (special ? `📝 Special Requests: ${special}\n` : '') +
+    `\nKindly confirm the reservation. Thank you!`
+  );
+
+  window.open(`https://wa.me/919202420684?text=${msg}`, '_blank');
+
+  btn.textContent = '✓ Opening WhatsApp…';
+  btn.style.background = 'linear-gradient(135deg, #25D366, #128C7E)';
+  setTimeout(() => {
+    btn.textContent = '✦ Confirm Reservation';
+    btn.style.background = '';
+  }, 4000);
+}
+
+// SMOOTH ANCHOR SCROLL
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+
+// STAGGERED CARD ANIMATIONS
+document.querySelectorAll('.food-card, .celebration-card, .why-card').forEach((card, i) => {
+  card.style.transitionDelay = (i % 3) * 0.08 + 's';
+});
+</script>
+</body>
+</html>

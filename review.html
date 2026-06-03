@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>C3 Restro — Rate Your Experience</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+  --white: #FFFFFF;
+  --off-white: #FAFAF8;
+  --cream: #F7F4EE;
+  --warm-gray: #F2EFE9;
+  --light-gray: #E8E4DD;
+  --mid-gray: #C4BFB5;
+  --text-muted: #8A8278;
+  --text-soft: #5A554E;
+  --text-main: #1C1916;
+
+  --amber: #C17F24;
+  --amber-light: #E8A43A;
+  --amber-pale: #FDF3E3;
+  --amber-border: rgba(193,127,36,0.2);
+
+  --sage: #5C7A5E;
+  --sage-light: #7A9E7C;
+  --sage-pale: #EEF4EE;
+
+  --terracotta: #B5532A;
+  --terracotta-pale: #FDF0EB;
+
+  --shadow-sm: 0 2px 12px rgba(28,25,22,0.06);
+  --shadow-md: 0 8px 32px rgba(28,25,22,0.10);
+  --shadow-lg: 0 20px 64px rgba(28,25,22,0.12);
+  --shadow-xl: 0 40px 100px rgba(28,25,22,0.14);
+  --shadow-amber: 0 12px 40px rgba(193,127,36,0.18);
+
+  --gradient-amber: linear-gradient(135deg, #C17F24 0%, #E8A43A 50%, #C17F24 100%);
+  --gradient-sage: linear-gradient(135deg, #5C7A5E 0%, #7A9E7C 100%);
+  --gradient-warm: linear-gradient(180deg, #FAFAF8 0%, #F7F4EE 100%);
+  --gradient-section: linear-gradient(180deg, #F7F4EE 0%, #FAFAF8 100%);
+  --gradient-hero-light: linear-gradient(180deg, rgba(250,250,248,0.15) 0%, rgba(247,244,238,0.7) 55%, #F7F4EE 100%);
+
+  --radius: 20px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+  --ease: cubic-bezier(.16,1,.3,1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Legacy aliases for component compatibility */
+  --bg:         var(--cream);
+  --surface:    var(--white);
+  --surface2:   var(--amber-pale);
+
+  --border:     var(--amber-border);
+  --border-hi:  rgba(193,127,36,0.40);
+
+  --gold:       var(--amber);
+  --gold2:      var(--amber-light);
+  --gold3:      var(--amber-light);
+
+  --text:       var(--text-main);
+  --muted:      var(--text-soft);
+  --muted2:     var(--text-muted);
+
+  --green:      var(--sage);
+
+  --card-glow:  rgba(193,127,36,0.10);
+}
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Jost', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1.25rem 6rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ── Ambient Background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 15% 5%, rgba(193,127,36,0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 55% 40% at 85% 85%, rgba(232,164,58,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse 45% 35% at 50% 40%, rgba(181,83,42,0.04) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Food pattern overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C17F24' fill-opacity='0.04'%3E%3Cpath d='M30 5 L32 15 L30 25 L28 15 Z M5 30 L15 28 L25 30 L15 32 Z M55 30 L45 28 L35 30 L45 32 Z M30 55 L32 45 L30 35 L28 45 Z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    /* ── Floating Orbs ── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+      animation: orbFloat 8s ease-in-out infinite;
+    }
+    .orb-1 { width: 300px; height: 300px; background: rgba(193,127,36,0.10); top: -100px; left: -100px; animation-delay: 0s; }
+    .orb-2 { width: 250px; height: 250px; background: rgba(232,164,58,0.07); bottom: 100px; right: -80px; animation-delay: 3s; }
+    .orb-3 { width: 180px; height: 180px; background: rgba(181,83,42,0.06); top: 50%; left: 60%; animation-delay: 5s; }
+
+    @keyframes orbFloat {
+      0%, 100% { transform: translate(0,0) scale(1); }
+      33%       { transform: translate(20px,-15px) scale(1.05); }
+      66%       { transform: translate(-10px, 20px) scale(0.98); }
+    }
+
+    /* ── Layout ── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      animation: fadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Logo Area ── */
+    .logo-area {
+      text-align: center;
+      padding: 2rem 0 0.5rem;
+      animation: fadeUp 0.8s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .logo-emblem {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 90px; height: 90px;
+      background: radial-gradient(135deg, rgba(193,127,36,0.18) 0%, rgba(193,127,36,0.05) 100%);
+      border: 2px solid rgba(193,127,36,0.35);
+      border-radius: 50%;
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 0 40px rgba(193,127,36,0.18), inset 0 0 30px rgba(193,127,36,0.05);
+      animation: glowPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% { box-shadow: 0 0 30px rgba(193,127,36,0.18), inset 0 0 20px rgba(193,127,36,0.05); }
+      50%       { box-shadow: 0 0 60px rgba(193,127,36,0.30), inset 0 0 40px rgba(193,127,36,0.10); }
+    }
+
+    .logo-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--gold);
+      text-shadow: 0 0 40px rgba(22,101,52,0.25);
+      line-height: 1;
+      margin-bottom: 0.25rem;
+    }
+
+    .logo-tagline {
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    /* ── Card Base ── */
+    .card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(253,243,227,0.98) 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.25rem 2rem;
+      box-shadow:
+        0 0 0 1px rgba(193,127,36,0.06),
+        0 12px 50px rgba(193,127,36,0.10),
+        0 0 60px var(--card-glow);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 20%; right: 20%;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--gold), var(--gold3), transparent);
+      border-radius: 99px;
+    }
+
+    /* ── Hero Section ── */
+    .hero-card {
+      text-align: center;
+      padding: 2.5rem 2rem 2rem;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(193,127,36,0.10);
+      border: 1px solid rgba(193,127,36,0.25);
+      border-radius: 99px;
+      padding: 0.35rem 1rem;
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 1.25rem;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--amber);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--amber);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--gold); }
+      50%       { opacity: 0.5; box-shadow: 0 0 16px var(--gold); }
+    }
+
+    .hero-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.9rem, 6vw, 2.6rem);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.15;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(135deg, #1C1916 20%, var(--amber) 55%, var(--amber-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 300;
+      line-height: 1.6;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    /* ── Animated Stars ── */
+    .stars-display {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin: 1.5rem 0 0;
+    }
+
+    .star-anim {
+      font-size: 2rem;
+      animation: starPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      filter: drop-shadow(0 0 10px rgba(193,127,36,0.6));
+      cursor: default;
+      user-select: none;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    .star-anim:nth-child(1) { animation-delay: 0.1s; }
+    .star-anim:nth-child(2) { animation-delay: 0.2s; }
+    .star-anim:nth-child(3) { animation-delay: 0.3s; }
+    .star-anim:nth-child(4) { animation-delay: 0.4s; }
+    .star-anim:nth-child(5) { animation-delay: 0.5s; }
+
+    @keyframes starPop {
+      from { opacity: 0; transform: scale(0.2) rotate(-30deg); }
+      to   { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+
+    .star-anim:hover {
+      transform: scale(1.3) rotate(10deg);
+      filter: drop-shadow(0 0 18px rgba(193,127,36,0.9));
+    }
+
+    /* ── Trust Bar ── */
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+    }
+
+    .trust-item {
+      background: rgba(193,127,36,0.06);
+      border: 1px solid rgba(193,127,36,0.14);
+      border-radius: 14px;
+      padding: 1rem 0.75rem;
+      text-align: center;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+
+    .trust-item:hover {
+      background: rgba(193,127,36,0.12);
+      border-color: rgba(193,127,36,0.28);
+      transform: translateY(-2px);
+    }
+
+    .trust-icon { font-size: 1.4rem; margin-bottom: 0.35rem; display: block; }
+
+    .trust-value {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gold3);
+      display: block;
+      line-height: 1.1;
+    }
+
+    .trust-label {
+      font-size: 0.62rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-weight: 500;
+      margin-top: 0.15rem;
+      display: block;
+    }
+
+    /* ── Reward Card ── */
+    .reward-card {
+      background: linear-gradient(135deg, rgba(193,127,36,0.10) 0%, rgba(232,164,58,0.06) 50%, rgba(253,243,227,0.80) 100%);
+      border: 1px solid rgba(193,127,36,0.28);
+      border-radius: 20px;
+      padding: 1.75rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .reward-card::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 10%; right: 10%;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--amber-light), transparent);
+    }
+
+    .reward-card::after {
+      content: '🎁';
+      position: absolute;
+      right: -10px; top: -10px;
+      font-size: 5rem;
+      opacity: 0.06;
+      transform: rotate(15deg);
+      pointer-events: none;
+    }
+
+    .reward-icon-wrap {
+      width: 44px; height: 44px;
+      background: rgba(193,127,36,0.15);
+      border: 1px solid rgba(193,127,36,0.28);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .reward-item {
+      background: rgba(193,127,36,0.07);
+      border: 1px solid rgba(193,127,36,0.16);
+      border-radius: 10px;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text);
+      font-weight: 400;
+      line-height: 1.3;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .reward-item:hover {
+      background: rgba(193,127,36,0.14);
+      transform: translateY(-2px);
+    }
+
+    .reward-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .reward-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--gold3);
+    }
+
+    .reward-subtitle {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.1rem;
+    }
+
+    .reward-items {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+    }
+
+    .reward-item-icon { font-size: 1.2rem; display: block; margin-bottom: 0.3rem; }
+
+    /* ── Review Generator ── */
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.65rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(193,127,36,0.3), transparent);
+    }
+
+    .textarea-wrap {
+      position: relative;
+      margin-bottom: 1.25rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 130px;
+      background: rgba(193,127,36,0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem 1.1rem 2rem;
+      color: var(--text);
+      font-family: 'Jost', sans-serif;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      font-weight: 300;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.25s, box-shadow 0.25s, background 0.25s, opacity 0.25s, transform 0.25s;
+    }
+
+    textarea:focus {
+      border-color: rgba(193,127,36,0.4);
+      background: rgba(193,127,36,0.05);
+      box-shadow: 0 0 0 3px rgba(193,127,36,0.08);
+    }
+
+    textarea::placeholder {
+      color: var(--muted2);
+      font-style: italic;
+      font-size: 0.83rem;
+    }
+
+    .char-count {
+      position: absolute;
+      bottom: 0.7rem;
+      right: 0.9rem;
+      font-size: 0.68rem;
+      color: var(--muted2);
+      pointer-events: none;
+      font-weight: 400;
+    }
+
+    /* ── Buttons ── */
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      width: 100%;
+      padding: 0.9rem 1.5rem;
+      border-radius: 12px;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.92rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s, opacity 0.15s;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--gradient-amber);
+      color: #FFFFFF;
+      font-weight: 600;
+      box-shadow: 0 4px 24px rgba(193,127,36,0.45), 0 1px 0 rgba(255,255,255,0.12) inset;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 36px rgba(193,127,36,0.60), 0 1px 0 rgba(255,255,255,0.18) inset;
+      transform: translateY(-2px);
+    }
+
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transform: skewX(-20deg);
+      transition: left 0.45s ease;
+    }
+
+    .btn-primary:hover::after { left: 160%; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-hi);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(193,127,36,0.07);
+      border-color: rgba(193,127,36,0.40);
+      transform: translateY(-1px);
+    }
+
+    .btn-google {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+
+    .btn-google:hover {
+      color: var(--text);
+      border-color: var(--border-hi);
+      background: rgba(193,127,36,0.05);
+    }
+
+    .btn svg { flex-shrink: 0; transition: transform 0.2s ease; }
+    .btn:hover svg { transform: scale(1.1); }
+
+    /* Loading spinner inside btn */
+    .btn-primary.loading::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: inherit;
+      border-radius: inherit;
+      z-index: 1;
+    }
+
+    .btn-primary.loading::after {
+      content: '';
+      position: absolute;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      z-index: 2;
+      left: auto; top: auto;
+      transform: none;
+      skewX: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0.1rem 0;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted2);
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Loyalty Section ── */
+    .loyalty-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(253,243,227,0.98) 100%);
+      border: 1px solid rgba(193,127,36,0.18);
+      border-radius: 20px;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loyalty-card::after {
+      content: '♛';
+      position: absolute;
+      right: -15px; bottom: -20px;
+      font-size: 7rem;
+      opacity: 0.04;
+      color: var(--amber);
+      pointer-events: none;
+    }
+
+    .loyalty-header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .loyalty-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--gold3);
+      margin-bottom: 0.3rem;
+    }
+
+    .loyalty-subtitle {
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    .loyalty-perks {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .perk-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.85rem 1rem;
+      background: rgba(193,127,36,0.05);
+      border: 1px solid rgba(193,127,36,0.12);
+      border-radius: 12px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .perk-item:hover {
+      background: rgba(193,127,36,0.10);
+      border-color: rgba(193,127,36,0.22);
+    }
+
+    .perk-icon {
+      font-size: 1.3rem;
+      flex-shrink: 0;
+      width: 36px;
+      text-align: center;
+    }
+
+    .perk-text { flex: 1; }
+
+    .perk-name {
+      font-size: 0.87rem;
+      font-weight: 500;
+      color: var(--text);
+      display: block;
+    }
+
+    .perk-desc {
+      font-size: 0.73rem;
+      color: var(--muted);
+      display: block;
+      margin-top: 0.1rem;
+    }
+
+    .perk-badge {
+      font-size: 0.65rem;
+      background: rgba(193,127,36,0.15);
+      border: 1px solid rgba(193,127,36,0.28);
+      color: var(--amber);
+      padding: 0.2rem 0.6rem;
+      border-radius: 99px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(30px);
+      background: rgba(255,255,255,0.97);
+      border: 1px solid rgba(193,127,36,0.30);
+      color: var(--amber);
+      padding: 0.7rem 1.5rem;
+      border-radius: 99px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 8px 40px rgba(193,127,36,0.15), 0 0 30px rgba(232,164,58,0.08);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      white-space: nowrap;
+      z-index: 200;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Footer ── */
+    .page-footer {
+      position: relative;
+      z-index: 1;
+      margin-top: 2rem;
+      text-align: center;
+    }
+
+    .footer-heart {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 300;
+      margin-bottom: 0.5rem;
+    }
+
+    .footer-heart span { color: #ef4444; }
+
+    /* ── Watermark ── */
+    .watermark {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-family: 'Jost', sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-decoration: none;
+      opacity: 0.55;
+      transition: opacity 0.25s ease, color 0.25s;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid rgba(193,127,36,0.15);
+      border-radius: 99px;
+      background: rgba(253,243,227,0.7);
+      backdrop-filter: blur(8px);
+    }
+
+    .watermark:hover {
+      opacity: 1;
+      color: var(--amber);
+      border-color: rgba(193,127,36,0.35);
+      background: rgba(253,243,227,0.95);
+    }
+
+    .watermark-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px; height: 16px;
+      background: var(--gradient-amber);
+      border-radius: 4px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0;
+      flex-shrink: 0;
+    }
+
+    .watermark-sep {
+      width: 1px;
+      height: 10px;
+      background: rgba(193,127,36,0.25);
+      display: inline-block;
+    }
+
+    /* ── Confetti ── */
+    .confetti-container {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      overflow: hidden;
+    }
+
+    .confetti-piece {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 2px;
+      opacity: 0;
+      animation: confettiFall 3s ease-in forwards;
+    }
+
+    @keyframes confettiFall {
+      0%   { opacity: 1; transform: translateY(-20px) rotate(0deg); }
+      100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+    }
+
+    /* ── Success overlay in textarea ── */
+    .copy-success {
+      position: absolute;
+      inset: 0;
+      background: rgba(253,243,227,0.97);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 2;
+    }
+
+    .copy-success.show { opacity: 1; pointer-events: all; }
+
+    .copy-success-icon {
+      font-size: 2.5rem;
+      animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    .copy-success-text {
+      font-size: 0.85rem;
+      color: var(--green);
+      font-weight: 500;
+    }
+
+    @keyframes scaleIn {
+      from { transform: scale(0); }
+      to   { transform: scale(1); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 520px) {
+      .card { padding: 1.75rem 1.4rem; }
+      .trust-grid { grid-template-columns: repeat(2, 1fr); }
+      .reward-items { grid-template-columns: repeat(3, 1fr); }
+      .logo-name { font-size: 2rem; }
+      .hero-title { font-size: 1.8rem; }
+    }
+
+    @media (max-width: 360px) {
+      .reward-items { grid-template-columns: repeat(1, 1fr); }
+      .trust-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating ambient orbs -->
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- Confetti container -->
+<div class="confetti-container" id="confettiContainer"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="alert" aria-live="polite">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toastMsg">Review copied!</span>
+</div>
+
+<div class="wrapper">
+
+  <!-- Logo Area -->
+  <div class="logo-area">
+    <div class="logo-emblem" role="img" aria-label="C3 Restro logo">🍽️</div>
+    <div class="logo-name">C3 Restro</div>
+    <div class="logo-tagline">Fine Dining · Ujjain</div>
+  </div>
+
+  <!-- Hero Card -->
+  <div class="card hero-card">
+    <div class="hero-badge">Share Your Experience</div>
+    <h1 class="hero-title">🍽️ Rate Your<br>C3 Restro Experience</h1>
+    <p class="hero-subtitle">Your review helps us serve you better and helps other food lovers discover C3 Restro.</p>
+    <div class="stars-display" aria-label="5 star rating">
+      <span class="star-anim" role="img" aria-label="star">★</span>
+      <span class="star-anim" role="img" aria-label="star">★</span>
+      <span class="star-anim" role="img" aria-label="star">★</span>
+      <span class="star-anim" role="img" aria-label="star">★</span>
+      <span class="star-anim" role="img" aria-label="star">★</span>
+    </div>
+  </div>
+
+  
+ 
+
+  <!-- Review Generator Card -->
+  <div class="card" role="region" aria-label="Review generator">
+    <div class="section-label">Generate Your Review</div>
+
+    <div class="textarea-wrap">
+      <textarea
+        id="reviewText"
+        placeholder='Tap "Generate Review" below to get a ready-made review you can post on Google…'
+        readonly
+        aria-label="Generated review text"
+      ></textarea>
+      <span class="char-count" id="charCount">0 / 300</span>
+      <div class="copy-success" id="copySuccess" aria-hidden="true">
+        <div class="copy-success-icon">✅</div>
+        <div class="copy-success-text">Copied &amp; Opening Google…</div>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" id="generateBtn" onclick="generateReview()" aria-label="Generate a restaurant review">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v3M18.36 5.64l-2.12 2.12M21 12h-3M18.36 18.36l-2.12-2.12M12 21v-3M5.64 18.36l2.12-2.12M3 12h3M5.64 5.64l2.12 2.12"/>
+        </svg>
+        Click Here For Review
+      </button>
+
+      <button class="btn btn-secondary" id="copyBtn" onclick="copyReview()" aria-label="Copy review to clipboard">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        Copy Review
+      </button>
+
+      <div class="divider" aria-hidden="true">or</div>
+
+      <button class="btn btn-google" id="googleBtn" onclick="openGoogleReview()" aria-label="Open Google review page">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        Open Google Review Page
+      </button>
+    </div>
+  </div>
+
+  <!-- Loyalty Section -->
+  <div class="loyalty-card" role="region" aria-label="Loyalty program">
+    <div class="loyalty-header">
+      <div class="loyalty-title">♛ Join C3 Rewards Club</div>
+      <div class="loyalty-subtitle">Dine more, earn more — every visit counts</div>
+    </div>
+    <div class="loyalty-perks">
+      <div class="perk-item">
+        <div class="perk-icon" aria-hidden="true">🪙</div>
+        <div class="perk-text">
+          <span class="perk-name">Earn Points on Every Visit</span>
+          <span class="perk-desc">Accumulate points with each meal and redeem for discounts</span>
+        </div>
+        <span class="perk-badge">Active</span>
+      </div>
+      <div class="perk-item">
+        <div class="perk-icon" aria-hidden="true">🎖️</div>
+        <div class="perk-text">
+          <span class="perk-name">Unlock Special Rewards</span>
+          <span class="perk-desc">Reach milestones to unlock complimentary dishes &amp; upgrades</span>
+        </div>
+        <span class="perk-badge">New</span>
+      </div>
+      <div class="perk-item">
+        <div class="perk-icon" aria-hidden="true">💌</div>
+        <div class="perk-text">
+          <span class="perk-name">Exclusive Member Offers</span>
+          <span class="perk-desc">Birthday specials, early access to new menu items &amp; more</span>
+        </div>
+        <span class="perk-badge">VIP</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="page-footer">
+    <p class="footer-heart">Thank you for dining with C3 Restro <span>❤️</span></p>
+    <a class="watermark" href="https://www.nexorascale.com" target="_blank" rel="noopener noreferrer" aria-label="Managed and Powered by Nexora Scale">
+      <span class="watermark-logo">N</span>
+      <span class="watermark-sep"></span>
+      Managed &amp; Powered by Nexora Scale
+    </a>
+  </footer>
+
+</div>
+
+<script>
+  const GOOGLE_REVIEW_URL = "https://search.google.com/local/writereview?placeid=ChIJXwYmdOtzYzkRV_qPQ1R3-TA";
+
+  const REVIEWS = [
+    "Visited with my family for dinner and had a pleasant experience. The food was fresh, service was quick, and the atmosphere was comfortable for family dining.",
+"We stopped here for lunch while visiting Ujjain. The food was served hot, the staff was courteous, and the overall experience was enjoyable.",
+"Nice place to enjoy a meal with family. The restaurant was clean, seating was comfortable, and the food quality was good.",
+"Had dinner here with friends and everyone enjoyed the food. Service was prompt and the ambience was relaxing.",
+"The menu offers a good variety of options. Food tasted fresh and the staff helped us with recommendations.",
+"Visited on a weekend evening and despite the crowd, service was well managed. Food arrived on time and tasted great.",
+"A good family restaurant with a welcoming atmosphere. The staff was attentive and the food was worth the visit.",
+"The restaurant was neat and hygienic. We enjoyed the meal and appreciated the friendly service.",
+"Had a satisfying dining experience here. Portions were decent and the food quality met our expectations.",
+"Good place for family gatherings. The ambience is pleasant and the service team is helpful.",
+"We enjoyed our lunch here. The food was flavorful and the restaurant maintained good cleanliness standards.",
+"The staff was polite and made sure everything was served properly. Overall a comfortable dining experience.",
+"Visited for dinner and found the service efficient. Food was prepared well and served fresh.",
+"A nice restaurant for spending quality time with family. The seating arrangement and atmosphere were comfortable.",
+"The food quality was consistent and the service was quick. Looking forward to visiting again.",
+"Enjoyed a peaceful dinner here. The restaurant has a family-friendly environment and good food options.",
+"The staff was welcoming from the moment we entered. Food was tasty and service was smooth.",
+"Had a great meal with family. Everything was served fresh and the dining area was well maintained.",
+"The ambience was calm and suitable for family dining. Food quality was good and service was professional.",
+"Good experience overall. The restaurant offers tasty food and a comfortable environment for guests.",
+"Visited after hearing positive feedback from friends. The food and service both lived up to expectations.",
+"The restaurant was clean and organized. We appreciated the prompt service and fresh food.",
+"A reliable place for dining with family. The staff was cooperative and the food tasted fresh.",
+"The overall atmosphere was warm and welcoming. We enjoyed our meal and the hospitality.",
+"Good value for money. Portions were satisfying and the service team was attentive.",
+"The food was served hot and tasted fresh. Staff members were polite and responsive.",
+"Visited for a family dinner and had a smooth experience. The restaurant maintained good hygiene standards.",
+"A pleasant place to dine with family. The ambience and service contributed to a good experience.",
+"We appreciated the quick service and comfortable seating. Food quality was consistent throughout the meal.",
+"The restaurant has a friendly atmosphere and a good variety of food choices.",
+"Everything from ordering to serving was handled professionally. We enjoyed our visit.",
+"The dining area was clean and well maintained. Food arrived quickly and tasted good.",
+"Had a nice evening here with family. Service was efficient and the food was enjoyable.",
+"The restaurant provides a comfortable environment for family meals. Staff was attentive and helpful.",
+"Visited during lunch hours and had a positive experience. Food quality and service were both satisfactory.",
+"A good option for family dining in Ujjain. The atmosphere was pleasant and the food was fresh.",
+"The staff made us feel welcome and ensured our order was served properly. Nice overall experience.",
+"We enjoyed trying different dishes from the menu. Everything was prepared well and served on time.",
+"The restaurant maintained cleanliness even during busy hours. Service remained efficient throughout.",
+"A comfortable place for dinner with family. Food was flavorful and portions were adequate.",
+"Good hospitality and a pleasant atmosphere. We had an enjoyable dining experience.",
+"The food tasted fresh and the service team was responsive to our requests. Overall a good visit.",
+"Visited with relatives and everyone appreciated the food quality and service.",
+"A well-maintained restaurant with courteous staff and a welcoming environment.",
+"The experience was smooth from start to finish. Food arrived quickly and tasted great.",
+"Nice family-friendly atmosphere. The restaurant offers good food and attentive service.",
+"We were impressed by the cleanliness and professionalism of the staff. Food quality was good as well.",
+"A pleasant dining destination for families. Comfortable seating and good service added to the experience.",
+"The restaurant provides a relaxing environment along with quality food and courteous service.",
+"Enjoyed spending time here with family. The food was fresh, service was prompt, and the overall experience was satisfying."
+  ];
+
+  const textarea    = document.getElementById('reviewText');
+  const charCount   = document.getElementById('charCount');
+  const toast       = document.getElementById('toast');
+  const toastMsg    = document.getElementById('toastMsg');
+  const generateBtn = document.getElementById('generateBtn');
+  const copySuccess = document.getElementById('copySuccess');
+  let toastTimer    = null;
+  let lastIndex     = -1;
+
+  // Restore last review from localStorage
+  (function init() {
+    try {
+      const saved = localStorage.getItem('c3restro_last_review');
+      if (saved) {
+        textarea.value = saved;
+        updateCharCount(saved.length);
+      }
+    } catch(e) {}
+  })();
+
+  function updateCharCount(n) {
+    charCount.textContent = `${n} / 300`;
+  }
+
+  function showToast(message, isError = false) {
+    toastMsg.textContent = message;
+    toast.style.borderColor = isError ? 'rgba(239,68,68,0.3)' : 'rgba(193,127,36,0.3)';
+    toast.style.color       = isError ? '#ef4444' : '#C17F24';
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  function getRandomIndex() {
+    if (REVIEWS.length === 1) return 0;
+    let idx;
+    do { idx = Math.floor(Math.random() * REVIEWS.length); } while (idx === lastIndex);
+    return idx;
+  }
+
+  function launchConfetti() {
+    const container = document.getElementById('confettiContainer');
+    const colors = ['#C17F24','#E8A43A','#FDF3E3','#fff','#B5532A','#F7F4EE','#5C7A5E'];
+    container.innerHTML = '';
+    for (let i = 0; i < 55; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.top  = '-10px';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.width  = (Math.random() * 8 + 5) + 'px';
+      piece.style.height = (Math.random() * 8 + 5) + 'px';
+      piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      piece.style.animationDelay = (Math.random() * 1.2) + 's';
+      piece.style.animationDuration = (Math.random() * 2 + 2.5) + 's';
+      container.appendChild(piece);
+    }
+    setTimeout(() => { container.innerHTML = ''; }, 5000);
+  }
+
+  function generateReview() {
+    // Loading state
+    generateBtn.classList.add('loading');
+    generateBtn.disabled = true;
+
+    setTimeout(() => {
+      const idx    = getRandomIndex();
+      lastIndex    = idx;
+      const review = REVIEWS[idx];
+
+      // Animate textarea
+      textarea.style.opacity   = '0.2';
+      textarea.style.transform = 'scale(0.98)';
+
+      setTimeout(() => {
+        textarea.value = review;
+        textarea.style.opacity   = '1';
+        textarea.style.transform = 'scale(1)';
+        updateCharCount(review.length);
+        generateBtn.classList.remove('loading');
+        generateBtn.disabled = false;
+
+        // Save
+        try { localStorage.setItem('c3restro_last_review', review); } catch(e) {}
+
+        // Auto copy
+        copyToClipboard(review, false);
+
+        // Show confetti
+        launchConfetti();
+
+        // Show success overlay
+        copySuccess.classList.add('show');
+        copySuccess.setAttribute('aria-hidden', 'false');
+
+        setTimeout(() => {
+          copySuccess.classList.remove('show');
+          copySuccess.setAttribute('aria-hidden', 'true');
+          // Open Google Review
+          openGoogleReview();
+        }, 1200);
+
+      }, 200);
+    }, 500); // simulate brief loading
+  }
+
+  function copyToClipboard(text, showFeedback = true) {
+    if (!text || !text.trim()) {
+      if (showFeedback) showToast('Generate a review first.', true);
+      return;
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        if (showFeedback) showToast('✓ Review copied to clipboard!');
+      }).catch(() => fallbackCopy(text, showFeedback));
+    } else {
+      fallbackCopy(text, showFeedback);
+    }
+  }
+
+  function fallbackCopy(text, showFeedback) {
+    textarea.removeAttribute('readonly');
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      if (showFeedback) showToast('✓ Review copied to clipboard!');
+    } catch {
+      if (showFeedback) showToast('Copy failed — please copy manually.', true);
+    }
+    textarea.setAttribute('readonly', true);
+    window.getSelection()?.removeAllRanges();
+  }
+
+  function copyReview() {
+    const text = textarea.value.trim();
+    if (!text) { showToast('Generate a review first.', true); return; }
+    copyToClipboard(text, true);
+    // Brief success flash
+    copySuccess.querySelector('.copy-success-text').textContent = 'Copied to clipboard!';
+    copySuccess.classList.add('show');
+    setTimeout(() => {
+      copySuccess.classList.remove('show');
+      copySuccess.querySelector('.copy-success-text').textContent = 'Copied & Opening Google…';
+    }, 900);
+  }
+
+  function openGoogleReview() {
+    window.open(GOOGLE_REVIEW_URL, '_blank', 'noopener,noreferrer');
+  }
+
+  // Smooth textarea transition reset
+  textarea.addEventListener('transitionend', () => {
+    textarea.style.transition = '';
+  });
+</script>
+<style>
+  body {
+  background:
+    radial-gradient(circle at top right, rgba(232,164,58,0.10), transparent 35%),
+    radial-gradient(circle at bottom left, rgba(193,127,36,0.07), transparent 35%),
+    var(--cream);
+}
+</style>
+</body>
+</html>
